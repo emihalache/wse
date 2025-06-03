@@ -1,16 +1,40 @@
-# This is a sample Python script.
+import logging
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+from src.dataset import Retriever
+from src.perprocess import Preprocessor
 
+# Set up logging to file and console
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+# File handler
+file_handler = logging.FileHandler('myapp.log')
+file_handler.setLevel(logging.INFO)
 
+# Console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
 
-# Press the green button in the gutter to run the script.
+# Common format
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Add handlers if not already added (avoid duplicate logs on rerun)
+if not logger.hasHandlers():
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    # Initialise all the necessary classes
+    retriever = Retriever()
+    preprocessor = Preprocessor()
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    # Retrieve the dataset as a pandas df
+    df = retriever.get_dataset()
+    logger.info(f"Shape of df: {df.shape}")
+    
+    # Start preprocessing the data
+    new_df = preprocessor.preprocess(df)
+    logger.info(f"New shape of the df: {new_df.shape}")
+    
