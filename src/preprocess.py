@@ -33,6 +33,6 @@ class Preprocessor:
         # The amount of data that have null values
         logger.info(f"\n{new_df.isnull().sum()}")
 
-        # TODO: Implement null value handling
+        # We know that there are no null_values
 
         return new_df

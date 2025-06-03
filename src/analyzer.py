@@ -1,6 +1,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import logging
+import os
+
+from distinctipy import distinctipy
 
 #region logging stuff
 # Set up logging to file and console
@@ -27,25 +30,165 @@ if not logger.hasHandlers():
 #endregion
 
 class Analyzer:
-    def year(self, df):
+    def sub1(self, df):
+        # Ensure results directory exists
+        os.makedirs("results", exist_ok=True)
+
         if 'release_year' not in df.columns:
             print("release_year column not found.")
             return
-
-        # Skip rows with missing release_year
-        df = df[df['release_year'].notnull()]
-
-        # Convert release_year (int or float) to string + dummy date
+        
+        # Convert release_year to datetime
         df['Date_N'] = pd.to_datetime(df['release_year'].astype(int).astype(str) + '-01-01')
+        df['Year'] = df['Date_N'].dt.year
 
-        # Plot number of shows released per year
-        df['Date_N'].dt.year.value_counts().sort_index().plot(kind='bar', figsize=(10, 5))
+        # -----------------------------
+        # Plot 1: Total releases per year
+        # -----------------------------
+        releases_per_year = df['Year'].value_counts().sort_index()
+        releases_per_year.plot(kind='bar', figsize=(10, 5))
         plt.title("Number of Releases by Year")
         plt.xlabel("Year")
         plt.ylabel("Number of Shows")
         plt.tight_layout()
-        # Save the plot to results map
         plt.savefig("results/releases_by_year.png")
+        plt.clf()  # Clear figure for next plot
+
+        # Save data to Excel
+        releases_df = releases_per_year.reset_index()
+        releases_df.columns = ['Year', 'Count']
+        releases_df.to_excel("results/releases_by_year.xlsx", index=False)
+
+
+        # -----------------------------
+        # Plot 2: Movies per genre per year
+        # -----------------------------
+        if 'listed_in' not in df.columns:
+            print("listed_in column not found.")
+            return
+        
+        # Split the 'listed_in' column by comma and explode
+        df['Genre'] = df['listed_in'].str.split(', ')
+        df_exploded = df.explode('Genre')
+
+        genre_counts = df_exploded.groupby(['Year', 'Genre']).size().unstack(fill_value=0)
+        # Generate visually distinct colors
+        distinct_colors = distinctipy.get_colors(genre_counts.shape[1])
+
+        genre_counts.plot(
+            kind='line',
+            stacked=False,
+            figsize=(20, 10),
+            color=distinct_colors,
+        )
+
+        plt.title("Number of Movies per Genre per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Count")
+        plt.legend(title='Genre', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/movies_per_genre_per_year.png")
+        plt.clf()
+
+        # Save genre data to Excel
+        genre_counts.to_excel("results/movies_per_genre_per_year.xlsx")
+
+        # -----------------------------
+        # Plot 3: Movies/Series per type per year
+        # -----------------------------
+        if 'type' not in df.columns:
+            print("type column not found.")
+            return
+        # Group by Year and Type
+        type_counts = df.groupby(['Year', 'type']).size().unstack(fill_value=0)
+
+        # Plot as bar chart
+        type_counts.plot(kind='bar', stacked=True, figsize=(12, 6))
+        plt.title("Number of Movies and TV Shows per Type per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Count")
+        plt.legend(title='Type')
+        plt.tight_layout()
+        plt.savefig("results/types_per_year.png")
+        plt.clf()
+
+        # Save to Excel
+        type_counts.to_excel("results/types_per_year.xlsx")
+
+        # -----------------------------
+        # Plot 4: Movies/Series per rating per year
+        # -----------------------------
+        if 'rating' not in df.columns:
+            print("rating column not found.")
+            return
+        # Group by Year and Rating
+        rating_counts = df.groupby(['Year', 'rating']).size().unstack(fill_value=0)
+
+        # Generate visually distinct colors
+        distinct_colors_type = distinctipy.get_colors(rating_counts.shape[1])
+
+        rating_counts.plot(
+            kind='line',
+            stacked=False,
+            figsize=(20, 10),
+            color=distinct_colors_type,
+        )
+
+        plt.title("Number of Movies and TV Shows per Rating per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Count")
+        plt.legend(title='Rating', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/ratings_per_year.png")
+        plt.clf()
+
+        # Save to Excel
+        rating_counts.to_excel("results/ratings_per_year.xlsx")
+
+        
+        # -----------------------------
+        # Plot 5: Top 10 Directors per Year
+        # -----------------------------
+        if 'director' not in df.columns:
+            logger.warning("'director' column not found.")
+            return
+
+        # Clean up
+        df['Director'] = df['director'].str.strip()
+
+        # Count appearances per director per year
+        director_counts = df.groupby(['Year', 'Director']).size().reset_index(name='Count')
+
+        # Get top 10 directors per year
+        top10_per_year = director_counts.groupby('Year').apply(
+            lambda g: g.nlargest(10, 'Count')
+        ).reset_index(drop=True)
+
+        # Pivot to wide format for plotting
+        pivot_df = top10_per_year.pivot(index='Year', columns='Director', values='Count').fillna(0)
+
+        # Generate distinct colors
+        distinct_colors_directors = distinctipy.get_colors(pivot_df.shape[1])
+
+        # Plot
+        pivot_df.plot(
+            kind='bar',
+            stacked=True,
+            figsize=(20, 10),
+            color=distinct_colors_directors,
+        )
+
+        plt.title("Top 10 Directors per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Number of Movies/Shows")
+        plt.legend(title="Director", bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/top10_directors_per_year.png")
+        plt.clf()
+
+        # Save to Excel
+        pivot_df.to_excel("results/top10_directors_per_year.xlsx")
+
 
     def genre(self, df):
         if 'listed_in' not in df.columns:
