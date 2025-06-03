@@ -75,12 +75,14 @@ class Analyzer:
         # Generate visually distinct colors
         distinct_colors = distinctipy.get_colors(genre_counts.shape[1])
 
-        genre_counts.plot(
-            kind='line',
-            stacked=False,
-            figsize=(20, 10),
-            color=distinct_colors,
-        )
+        # Plot manually to control linestyle
+        plt.figure(figsize=(20, 10))
+        linestyles = ['-', ':']  # Alternating solid and dotted lines
+
+        for i, (genre, color) in enumerate(zip(genre_counts.columns, distinct_colors)):
+            linestyle = linestyles[i % len(linestyles)]
+            plt.plot(genre_counts.index, genre_counts[genre], label=genre, color=color, linestyle=linestyle)
+
 
         plt.title("Number of Movies per Genre per Year")
         plt.xlabel("Year")
@@ -149,45 +151,45 @@ class Analyzer:
         # -----------------------------
         # Plot 5: Top 10 Directors per Year
         # -----------------------------
-        if 'director' not in df.columns:
-            logger.warning("'director' column not found.")
-            return
+        # if 'director' not in df.columns:
+        #     logger.warning("'director' column not found.")
+        #     return
 
-        # Clean up
-        df['Director'] = df['director'].str.strip()
+        # # Clean up
+        # df['Director'] = df['director'].str.strip()
 
-        # Count appearances per director per year
-        director_counts = df.groupby(['Year', 'Director']).size().reset_index(name='Count')
+        # # Count appearances per director per year
+        # director_counts = df.groupby(['Year', 'Director']).size().reset_index(name='Count')
 
-        # Get top 10 directors per year
-        top10_per_year = director_counts.groupby('Year').apply(
-            lambda g: g.nlargest(10, 'Count')
-        ).reset_index(drop=True)
+        # # Get top 10 directors per year
+        # top10_per_year = director_counts.groupby('Year').apply(
+        #     lambda g: g.nlargest(10, 'Count')
+        # ).reset_index(drop=True)
 
-        # Pivot to wide format for plotting
-        pivot_df = top10_per_year.pivot(index='Year', columns='Director', values='Count').fillna(0)
+        # # Pivot to wide format for plotting
+        # pivot_df = top10_per_year.pivot(index='Year', columns='Director', values='Count').fillna(0)
 
-        # Generate distinct colors
-        distinct_colors_directors = distinctipy.get_colors(pivot_df.shape[1])
+        # # Generate distinct colors
+        # distinct_colors_directors = distinctipy.get_colors(pivot_df.shape[1])
 
-        # Plot
-        pivot_df.plot(
-            kind='bar',
-            stacked=True,
-            figsize=(20, 10),
-            color=distinct_colors_directors,
-        )
+        # # Plot
+        # pivot_df.plot(
+        #     kind='bar',
+        #     stacked=True,
+        #     figsize=(20, 10),
+        #     color=distinct_colors_directors,
+        # )
 
-        plt.title("Top 10 Directors per Year")
-        plt.xlabel("Year")
-        plt.ylabel("Number of Movies/Shows")
-        plt.legend(title="Director", bbox_to_anchor=(1.05, 1), loc='upper left')
-        plt.tight_layout()
-        plt.savefig("results/top10_directors_per_year.png")
-        plt.clf()
+        # plt.title("Top 10 Directors per Year")
+        # plt.xlabel("Year")
+        # plt.ylabel("Number of Movies/Shows")
+        # plt.legend(title="Director", bbox_to_anchor=(1.05, 1), loc='upper left')
+        # plt.tight_layout()
+        # plt.savefig("results/top10_directors_per_year.png")
+        # plt.clf()
 
-        # Save to Excel
-        pivot_df.to_excel("results/top10_directors_per_year.xlsx")
+        # # Save to Excel
+        # pivot_df.to_excel("results/top10_directors_per_year.xlsx")
 
 
     def genre(self, df):
