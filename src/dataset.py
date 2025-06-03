@@ -3,6 +3,7 @@ import kagglehub
 import logging
 import os
 
+#region logging stuff
 # Set up logging to file and console
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -24,11 +25,12 @@ console_handler.setFormatter(formatter)
 if not logger.hasHandlers():
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
+#endregion
 
 class Retriever:
     def get_dataset(self):
         # Download latest version of netflix dataset
-        path = kagglehub.dataset_download("shivamb/netflix-shows")
+        path = kagglehub.dataset_download("ariyoomotade/netflix-data-cleaning-analysis-and-visualization")
 
         logger.info(f"Path to dataset files: {path}")
 

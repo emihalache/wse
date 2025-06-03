@@ -1,8 +1,5 @@
+import pandas as pd
 import logging
-
-from src.dataset import Retriever
-from src.preprocess import Preprocessor
-from src.analyzer import Analyzer
 
 #region logging stuff
 # Set up logging to file and console
@@ -28,23 +25,14 @@ if not logger.hasHandlers():
     logger.addHandler(console_handler)
 #endregion
 
-def main():
-    # Initialise all the necessary classes
-    retriever = Retriever()
-    preprocessor = Preprocessor()
-    analyzer = Analyzer()
+class Preprocessor:
+    def preprocess(self, df):
+        subset_cols = [col for col in df.columns if col != 'id']
+        new_df = df.drop_duplicates(subset=subset_cols, ignore_index=True)
 
-    # Retrieve the dataset as a pandas df
-    df = retriever.get_dataset()
-    logger.info(f"Shape of df: {df.shape}")
-    logger.info(f"\n{df.info()}")
-    
-    # Start preprocessing the data
-    new_df = preprocessor.preprocess(df)
-    logger.info(f"New shape of the df: {new_df.shape}")
+        # The amount of data that have null values
+        logger.info(f"\n{new_df.isnull().sum()}")
 
-    # Start analysing the data
-    analyzer.year(new_df)               # This gets the nr. of releases per year
+        # TODO: Implement null value handling
 
-if __name__ == '__main__':
-    main()
+        return new_df
