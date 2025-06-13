@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import logging
 import os
+import seaborn as sns
 
 from distinctipy import distinctipy
 
@@ -200,4 +201,87 @@ class Analyzer:
         # Skip rows with missing release_year
         df = df[df['listed_in'].notnull()]
 
+    def sub2(self, df):
+        # pd.set_option("display.max_columns", None)
+        # pd.set_option("display.max_rows", None)
 
+        # Ensure results directory exists
+        os.makedirs("results", exist_ok=True)
+
+        # print(df['country'].unique())
+        # Remove rows where country is "Not Given"
+        df = df[df['country'] != 'Not Given']
+
+        print("Before cleaning: ", df['country'].unique().shape)
+        # The dataset covers 85 countries
+
+        country_counts = df['country'].value_counts()
+        # pd.set_option("display.max_rows", None)
+        # print(country_counts)
+
+        # adjust the threshold for significant countries for analysis
+        min_entries = 50
+        df_signif_count = country_counts[country_counts >= min_entries].index.tolist()
+        df = df[df['country'].isin(df_signif_count)]
+
+        # We will analyse 24 countries
+        print("After cleaning: ", df['country'].unique().shape)
+
+        # -----------------------------
+        # Plot 1: Content Type by Country
+        # -----------------------------
+        releases_by_type = df.groupby(['country', 'type']).size().unstack(fill_value=0)
+        type_by_country = releases_by_type.loc[releases_by_type.sum(axis=1).sort_values(ascending=False).index]
+        # releases_type_per_country = releases_by_type['country'].value_counts().sort_values(ascending=False)
+        # ordered by the number of releases
+        type_by_country.plot(kind='bar', stacked=True, figsize=(10, 5), colormap='tab20')
+        plt.title("Content Type by Country")
+        plt.xlabel("Country")
+        plt.ylabel("Number of Shows")
+        plt.tight_layout()
+        plt.savefig("results/types_by_country.png")
+        plt.clf()  # Clear figure for next plot
+
+        # -----------------------------
+        # Plot 2: Maturity Rating by Country
+        # -----------------------------
+        rating_counts = df.groupby(['country', 'rating']).size().unstack(fill_value=0)
+        normalized = rating_counts.div(rating_counts.sum(axis=1), axis=0)
+        # ordered by the number of releases
+        normalized = normalized.loc[rating_counts.sum(axis=1).sort_values(ascending=False).index]
+
+        # Calculate average proportions per rating
+        avg_props = normalized.mean().sort_values(ascending=True)  # smallest at bottom, largest at top
+        # Reorder columns of normalized dataframe accordingly
+        normalized = normalized[avg_props.index]
+
+        normalized.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
+        plt.title("Normalized Maturity Ratings by Country")
+        plt.xlabel("Country")
+        plt.ylabel("Proportion of Shows")
+        plt.legend(title='Maturity Rating', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/normalized_ratings_by_country.png")
+        plt.clf()
+
+        # -----------------------------
+        # Plot 3: Genre by Country Heatmap
+        # -----------------------------
+        # Explode genres
+        df_genre = df.copy()
+        df_genre['Genre'] = df_genre['listed_in'].str.split(', ')
+        df_genre = df_genre.explode('Genre')
+
+        # Group and plot
+        genre_by_country = df_genre.groupby(['country', 'Genre']).size().unstack(fill_value=0)
+        genre_by_country = genre_by_country.loc[genre_by_country.sum(axis=1).sort_values(ascending=False).index]
+
+        plt.figure(figsize=(14, 8))
+        sns.heatmap(genre_by_country, annot=False, cmap='viridis')
+        plt.title("Genres by Country (Heatmap)")
+        plt.xlabel("Genre")
+        plt.ylabel("Country")
+        plt.tight_layout()
+        plt.savefig("results/genres_by_country.png")
+        plt.clf()
+        
