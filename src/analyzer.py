@@ -201,6 +201,7 @@ class Analyzer:
         # Skip rows with missing release_year
         df = df[df['listed_in'].notnull()]
 
+
     def sub2(self, df):
         # pd.set_option("display.max_columns", None)
         # pd.set_option("display.max_rows", None)
@@ -208,80 +209,148 @@ class Analyzer:
         # Ensure results directory exists
         os.makedirs("results", exist_ok=True)
 
+        ''' Data Cleaning and Preparation '''
+
         # print(df['country'].unique())
         # Remove rows where country is "Not Given"
         df = df[df['country'] != 'Not Given']
 
-        print("Before cleaning: ", df['country'].unique().shape)
         # The dataset covers 85 countries
-
+        print("Dataset before cleaning: ", df['country'].unique().shape)
+        
         country_counts = df['country'].value_counts()
         # pd.set_option("display.max_rows", None)
         # print(country_counts)
 
-        # adjust the threshold for significant countries for analysis
+        # adjust here the threshold for significant countries for analysis
         min_entries = 50
         df_signif_count = country_counts[country_counts >= min_entries].index.tolist()
         df = df[df['country'].isin(df_signif_count)]
 
         # We will analyse 24 countries
-        print("After cleaning: ", df['country'].unique().shape)
+        print("Dataset after cleaning: ", df['country'].unique().shape)
+
+
+        ''' Visualizations of Content Type by Country '''
+
+        # Grouping releases by country and content type
+        releases_by_country = df.groupby(['country', 'type']).size().unstack(fill_value=0)
+
+        # Order by the number of releases
+        ordered_index = releases_by_country.sum(axis=1).sort_values(ascending=False).index
 
         # -----------------------------
-        # Plot 1: Content Type by Country
+        # Plot 1: Quantity of releases per country with content type shown
         # -----------------------------
-        releases_by_type = df.groupby(['country', 'type']).size().unstack(fill_value=0)
-        type_by_country = releases_by_type.loc[releases_by_type.sum(axis=1).sort_values(ascending=False).index]
-        # releases_type_per_country = releases_by_type['country'].value_counts().sort_values(ascending=False)
-        # ordered by the number of releases
+        type_by_country = releases_by_country.loc[ordered_index]
+
         type_by_country.plot(kind='bar', stacked=True, figsize=(10, 5), colormap='tab20')
-        plt.title("Content Type by Country")
+        plt.title("Releases by Country")
         plt.xlabel("Country")
-        plt.ylabel("Number of Shows")
+        plt.ylabel("Number of Releases")
+        plt.legend(title='Content Type')
         plt.tight_layout()
-        plt.savefig("results/types_by_country.png")
+        plt.savefig("results/s2_1_releases_by_country.png")
         plt.clf()  # Clear figure for next plot
 
         # -----------------------------
-        # Plot 2: Maturity Rating by Country
+        # Plot 2: Proportions of type of content released per country
         # -----------------------------
-        rating_counts = df.groupby(['country', 'rating']).size().unstack(fill_value=0)
-        normalized = rating_counts.div(rating_counts.sum(axis=1), axis=0)
-        # ordered by the number of releases
-        normalized = normalized.loc[rating_counts.sum(axis=1).sort_values(ascending=False).index]
+        
+        # Normalize to get proportions of content type per country
+        normalized = releases_by_country.div(releases_by_country.sum(axis=1), axis=0)
 
-        # Calculate average proportions per rating
-        avg_props = normalized.mean().sort_values(ascending=True)  # smallest at bottom, largest at top
-        # Reorder columns of normalized dataframe accordingly
-        normalized = normalized[avg_props.index]
+        type_proportions_by_country = normalized.loc[ordered_index]
 
-        normalized.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
+        type_proportions_by_country.plot(kind='bar', stacked=True, figsize=(10, 5), colormap='tab20')
+        plt.title("Proportion Content Type by Country")
+        plt.xlabel("Country")
+        plt.ylabel("Percentage of Content Type")
+        plt.legend(title='Content Type', bbox_to_anchor=(1, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/s2_2_types_by_country.png")
+        plt.clf()  # Clear figure for next plot
+
+
+        ''' Visualizations of Maturity Ratings by Country '''
+
+        # -----------------------------
+        # Plot 3: Maturity Rating Proportions by Country
+        # -----------------------------
+
+        # Grouping releases by country and content type
+        rating_by_country = df.groupby(['country', 'rating']).size().unstack(fill_value=0)
+
+        # Normalize to get proportions of maturity ratings per country
+        normalized = rating_by_country.div(rating_by_country.sum(axis=1), axis=0)
+
+        # Order by the number of releases
+        ordered_index = normalized.loc[rating_by_country.sum(axis=1).sort_values(ascending=False).index]
+
+        # Order rating categories by average size across all countries for better visualization
+        # So generally the smallest one is at the bottom, and largest is at the top
+        rating_proportions_by_country = ordered_index[ordered_index.mean().sort_values(ascending=True).index]
+
+        rating_proportions_by_country.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
         plt.title("Normalized Maturity Ratings by Country")
         plt.xlabel("Country")
-        plt.ylabel("Proportion of Shows")
-        plt.legend(title='Maturity Rating', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.ylabel("Percentage of Maturity Ratings")
+        plt.legend(title='Maturity Rating', bbox_to_anchor=(1, 1), loc='upper left')
         plt.tight_layout()
-        plt.savefig("results/normalized_ratings_by_country.png")
+        plt.savefig("results/s2_3_normalized_ratings_by_country.png")
         plt.clf()
 
-        # -----------------------------
-        # Plot 3: Genre by Country Heatmap
-        # -----------------------------
-        # Explode genres
+
+        ''' Visualizations of Genres by Country '''
+
+        # Explode genres since the listen_in column contains genres separated by commas
         df_genre = df.copy()
         df_genre['Genre'] = df_genre['listed_in'].str.split(', ')
         df_genre = df_genre.explode('Genre')
 
-        # Group and plot
+        print("Dataset before cleaning: ", df_genre['Genre'].unique().shape)
+        
+        # There are 42 genres in the dataset
+        genre_counts = df_genre['Genre'].value_counts()
+        pd.set_option("display.max_rows", None)
+        print(genre_counts)
+
+        # Grouping releases by country and genre
         genre_by_country = df_genre.groupby(['country', 'Genre']).size().unstack(fill_value=0)
-        genre_by_country = genre_by_country.loc[genre_by_country.sum(axis=1).sort_values(ascending=False).index]
+
+        # Order by the number of releases
+        ordered_index = genre_by_country.sum(axis=1).sort_values(ascending=False).index
+
+        # -----------------------------
+        # Plot 4: Genre by Country Heatmap
+        # -----------------------------
+        genre_by_country_heatmap = genre_by_country.loc[ordered_index]
 
         plt.figure(figsize=(14, 8))
-        sns.heatmap(genre_by_country, annot=False, cmap='viridis')
+        sns.heatmap(genre_by_country_heatmap, annot=False, cmap='viridis')
         plt.title("Genres by Country (Heatmap)")
         plt.xlabel("Genre")
         plt.ylabel("Country")
         plt.tight_layout()
-        plt.savefig("results/genres_by_country.png")
+        plt.savefig("results/s2_4_genres_by_country.png")
         plt.clf()
         
+        # -----------------------------
+        # Plot 5: Genre by Country Heatmap
+        # -----------------------------
+
+        '''
+        # Normalize to get proportions of genres per country
+        normalized = genre_by_country.div(genre_by_country.sum(axis=1), axis=0)
+
+        genre_by_country_norm = normalized.loc[ordered_index]
+
+        genre_by_country_norm.plot(kind='bar', stacked=True, figsize=(14, 8), colormap='tab20')
+        plt.title("Normalized Genres by Country")
+        plt.xlabel("Country")
+        plt.ylabel("Percentage of Genres")
+        # plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title="Genre")
+        plt.tight_layout()
+        plt.savefig("results/s2_5_normalized_genre_by_country.png")
+        plt.clf()
+        '''
