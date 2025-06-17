@@ -201,8 +201,50 @@ class Analyzer:
         # Skip rows with missing release_year
         df = df[df['listed_in'].notnull()]
 
+    def map_rating_to_age_appropriateness(df):
+        # Mapping maturity ratings to their broader categories, because:
+        # - Some categories only differ by terminology used in movies vs TV shows
+        # - Our analysis is focused on the age appropriateness of content, not the reasons why 
+        # a system is rated a certain way (e.g. including violence, language, etc.)
+        group_maturity_ratings = {
+            # Intended or restricted to mature audiences and not suitable for children under 17
+            'TV-MA': 'Adult (17+)',
+            'R': 'Adult (17+)',
+            'NC-17': 'Adult (17+)',
+            
+            # Some material may be inappropriate for children under 13 or 14 years old, so parents 
+            # are strongly urged to be cautious of the content
+            'TV-14': 'Teens (PG Strongly Cautioned)',
+            'PG-13': 'Teens (PG Strongly Cautioned)',
+            
+            # Some material may not be suitable for young children, so parental guidance is suggested.
+            'TV-PG': 'Young Children (PG Suggested)',
+            'PG': 'Young Children (PG Suggested)',
+            
+            # The content is intended for older children (age 7 and above)
+            'TV-Y7': 'Older Children (7+)',
+            'TV-Y7-FV': 'Older Children (7+)',
+            
+            # The content is designed to be appropriate for children of all ages
+            'TV-Y': 'Young Children',
+            
+            # The content is suitable for all ages (general audience), including young children
+            'TV-G': 'All Ages',
+            'G': 'All Ages',
+            
+            # The content has not been assigned a specific rating, thus viewers should use their discretion
+            'NR': 'Not Rated',
+            'UR': 'Not Rated'
+        }
+
+        df['age_appropriateness'] = df['rating'].map(group_maturity_ratings).fillna('Other')
+
+        return df
+
 
     def sub2(self, df):
+        print("****************************** S2: Regional Variations in Content Characteristics ******************************")
+
         # pd.set_option("display.max_columns", None)
         # pd.set_option("display.max_rows", None)
 
@@ -216,20 +258,21 @@ class Analyzer:
         df = df[df['country'] != 'Not Given']
 
         # The dataset covers 85 countries
-        print("Dataset before cleaning: ", df['country'].unique().shape)
+        print("Dataset before cleaning countries: ", df['country'].unique().shape)
         
         country_counts = df['country'].value_counts()
         # pd.set_option("display.max_rows", None)
         # print(country_counts)
 
-        # adjust here the threshold for significant countries for analysis
+        # adjust here the threshold that defines a significant number of entries
+        # per country to be suitable for analysis
         min_entries = 50
         df_signif_count = country_counts[country_counts >= min_entries].index.tolist()
         df = df[df['country'].isin(df_signif_count)]
 
         # We will analyse 24 countries
-        print("Dataset after cleaning: ", df['country'].unique().shape)
-
+        print("Dataset after cleaning countries: ", df['country'].unique().shape)
+        print(df['country'].unique())
 
         ''' Visualizations of Content Type by Country '''
 
@@ -263,9 +306,9 @@ class Analyzer:
         type_proportions_by_country = normalized.loc[ordered_index]
 
         type_proportions_by_country.plot(kind='bar', stacked=True, figsize=(10, 5), colormap='tab20')
-        plt.title("Proportion Content Type by Country")
+        plt.title("Proportion of Content Type by Country")
         plt.xlabel("Country")
-        plt.ylabel("Percentage of Content Type")
+        plt.ylabel("Percentage")
         plt.legend(title='Content Type', bbox_to_anchor=(1, 1), loc='upper left')
         plt.tight_layout()
         plt.savefig("results/s2_2_types_by_country.png")
@@ -294,11 +337,39 @@ class Analyzer:
         rating_proportions_by_country.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
         plt.title("Normalized Maturity Ratings by Country")
         plt.xlabel("Country")
-        plt.ylabel("Percentage of Maturity Ratings")
+        plt.ylabel("Percentage")
         plt.legend(title='Maturity Rating', bbox_to_anchor=(1, 1), loc='upper left')
         plt.tight_layout()
         plt.savefig("results/s2_3_normalized_ratings_by_country.png")
-        plt.clf()
+        plt.clf() # Clear figure for next plot
+
+        # -----------------------------
+        # Plot 4: Proportions of Age Appropriateness Content by Country
+        # -----------------------------
+
+        df = self.map_rating_to_age_appropriateness(df)
+
+        # Grouping releases by country and content type
+        grouped_rating_by_country = df.groupby(['country', 'age_appropriateness']).size().unstack(fill_value=0)
+
+        # Normalize to get proportions of maturity ratings per country
+        normalized = grouped_rating_by_country.div(grouped_rating_by_country.sum(axis=1), axis=0)
+
+        # Order by the number of releases
+        ordered_index = normalized.loc[grouped_rating_by_country.sum(axis=1).sort_values(ascending=False).index]
+
+        # Order rating categories by average size across all countries for better visualization
+        # So generally the smallest one is at the bottom, and largest is at the top
+        grouped_rating_proportions_by_country = ordered_index[ordered_index.mean().sort_values(ascending=True).index]
+
+        grouped_rating_proportions_by_country.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
+        plt.title("Normalized Age Appropriateness by Country")
+        plt.xlabel("Country")
+        plt.ylabel("Percentage")
+        plt.legend(title='Age Appropriateness', bbox_to_anchor=(1, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/s2_4_normalized_grouped_ratings_by_country.png")
+        plt.clf() # Clear figure for next plot
 
 
         ''' Visualizations of Genres by Country '''
@@ -308,7 +379,7 @@ class Analyzer:
         df_genre['Genre'] = df_genre['listed_in'].str.split(', ')
         df_genre = df_genre.explode('Genre')
 
-        print("Dataset before cleaning: ", df_genre['Genre'].unique().shape)
+        print("Dataset before cleaning genres: ", df_genre['Genre'].unique().shape)
         
         # There are 42 genres in the dataset
         genre_counts = df_genre['Genre'].value_counts()
@@ -322,7 +393,7 @@ class Analyzer:
         ordered_index = genre_by_country.sum(axis=1).sort_values(ascending=False).index
 
         # -----------------------------
-        # Plot 4: Genre by Country Heatmap
+        # Plot 5: Genre by Country Heatmap
         # -----------------------------
         genre_by_country_heatmap = genre_by_country.loc[ordered_index]
 
@@ -332,11 +403,11 @@ class Analyzer:
         plt.xlabel("Genre")
         plt.ylabel("Country")
         plt.tight_layout()
-        plt.savefig("results/s2_4_genres_by_country.png")
-        plt.clf()
+        plt.savefig("results/s2_5_genres_by_country.png")
+        plt.clf() # Clear figure for next plot
         
         # -----------------------------
-        # Plot 5: Genre by Country Heatmap
+        # Plot 6: Genre by Country
         # -----------------------------
 
         '''
@@ -348,9 +419,9 @@ class Analyzer:
         genre_by_country_norm.plot(kind='bar', stacked=True, figsize=(14, 8), colormap='tab20')
         plt.title("Normalized Genres by Country")
         plt.xlabel("Country")
-        plt.ylabel("Percentage of Genres")
+        plt.ylabel("Percentage")
         # plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title="Genre")
         plt.tight_layout()
-        plt.savefig("results/s2_5_normalized_genre_by_country.png")
-        plt.clf()
+        plt.savefig("results/s2_6_normalized_genre_by_country.png")
+        plt.clf() # Clear figure for next plot
         '''
