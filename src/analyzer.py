@@ -392,10 +392,11 @@ class Analyzer:
 
         type_by_country.plot(kind='bar', stacked=True, figsize=(10, 5), colormap='tab20')
         plt.title("Releases by Country")
-        plt.xlabel("Country")
-        plt.ylabel("Number of Releases")
+        plt.xlabel("Country", fontsize=12)
+        plt.ylabel("Number of Releases", fontsize=12)
         plt.legend(title='Content Type')
-        plt.xticks(rotation=45, ha='right')
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
         plt.tight_layout()
         plt.savefig("results/s2_1_releases_by_country.png")
         plt.clf()  # Clear figure for next plot
@@ -413,10 +414,11 @@ class Analyzer:
         # Plot normalized stacked bar chart with this order
         type_proportions_by_country.plot(kind='bar', stacked=True, figsize=(10, 5), colormap='tab20')
         plt.title("Proportion of Content Type by Country")
-        plt.xlabel("Country")
-        plt.ylabel("Percentage")
+        plt.xlabel("Country", fontsize=12)
+        plt.ylabel("Percentage", fontsize=12)
         plt.legend(title='Content Type', bbox_to_anchor=(1, 1), loc='upper left')
-        plt.xticks(rotation=45, ha='right')
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
         plt.tight_layout()
         plt.savefig("results/s2_2_types_by_country.png")
         plt.clf()  # Clear figure for next plot
@@ -441,11 +443,12 @@ class Analyzer:
         rating_proportions_by_country = ordered_index[ordered_index.mean().sort_values(ascending=True).index]
 
         rating_proportions_by_country.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
-        plt.title("Normalized Maturity Ratings by Country")
-        plt.xlabel("Country")
-        plt.ylabel("Percentage")
+        plt.title("Proportion of Maturity Ratings by Country")
+        plt.xlabel("Country", fontsize=12)
+        plt.ylabel("Percentage", fontsize=12)
         plt.legend(title='Maturity Rating', bbox_to_anchor=(1, 1), loc='upper left')
-        plt.xticks(rotation=45, ha='right')
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
         plt.tight_layout()
         plt.savefig("results/s2_3_normalized_ratings_by_country.png")
         plt.clf() # Clear figure for next plot
@@ -477,11 +480,12 @@ class Analyzer:
         grouped_rating_proportions_by_country = ordered_index[desired_order]
 
         grouped_rating_proportions_by_country.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
-        plt.title("Normalized Age Appropriateness by Country (Adult to Child Order)")
-        plt.xlabel("Country")
-        plt.ylabel("Proportion")
+        plt.title("Proportion of Age Appropriateness by Country")
+        plt.xlabel("Country", fontsize=12)
+        plt.ylabel("Percentage", fontsize=12)
         plt.legend(title='Age Appropriateness', bbox_to_anchor=(1, 1), loc='upper left')
-        plt.xticks(rotation=45, ha='right')
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
         plt.tight_layout()
         plt.savefig("results/s2_4_normalized_grouped_ratings_by_country.png")
         plt.clf() # Clear figure for next plot
@@ -502,11 +506,12 @@ class Analyzer:
         genre_by_country = genre_by_country.loc[ordered_index]
 
         plt.figure(figsize=(14, 8))
-        sns.heatmap(genre_by_country, annot=False, cmap='viridis')
+        sns.heatmap(genre_by_country, annot=False, cmap='viridis', cbar_kws={'pad': 0.01})
         plt.title("Genres by Country")
-        plt.xlabel("Genre")
-        plt.ylabel("Country")
-        plt.xticks(rotation=45, ha='right')
+        plt.xlabel("Genre", fontsize=12)
+        plt.ylabel("Country", fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
         plt.tight_layout()
         plt.savefig("results/s2_5_genres_by_country.png")
         plt.clf() # Clear figure for next plot
@@ -524,11 +529,12 @@ class Analyzer:
         genre_group_by_country = genre_group_by_country.loc[ordered_index]
 
         plt.figure(figsize=(14, 8))
-        sns.heatmap(genre_group_by_country, annot=False, cmap='viridis')
+        sns.heatmap(genre_group_by_country, annot=False, cmap='viridis', cbar_kws={'pad': 0.01})
         plt.title("Genre Groups by Country")
-        plt.xlabel("Genre Group")
-        plt.ylabel("Country")
-        plt.xticks(rotation=45, ha='right')
+        plt.xlabel("Genre Group", fontsize=12)
+        plt.ylabel("Country", fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
         plt.tight_layout()
         plt.savefig("results/s2_6_genre_groups_by_country.png")
         plt.clf() # Clear figure for next plot
@@ -543,11 +549,12 @@ class Analyzer:
         tv_show_subgenre_by_country = pd.crosstab(df_tv_show['country'], df_tv_show['Genre'])
         
         plt.figure(figsize=(14, 8))
-        sns.heatmap(tv_show_subgenre_by_country, annot=False, cmap='viridis')
+        sns.heatmap(tv_show_subgenre_by_country, annot=False, cmap='viridis', cbar_kws={'pad': 0.01})
         plt.title('TV Show Sub-genres by Country')
-        plt.xlabel('TV Show Sub-Genre')
-        plt.ylabel('Country')
-        plt.xticks(rotation=45, ha='right')
+        plt.xlabel('TV Show Sub-Genre', fontsize=12)
+        plt.ylabel('Country', fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
         plt.tight_layout()
         plt.savefig("results/s2_7_tv_show_subgenres_by_country.png")
         plt.clf() # Clear figure for next plot
