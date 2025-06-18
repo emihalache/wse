@@ -209,7 +209,7 @@ class Analyzer:
         df = df[df['listed_in'].notnull()]
 
     def sub3(self, df):
-        os.makedirs("results", exist_ok=True)
+        os.makedirs("results/s3", exist_ok=True)
         logger.info("Starting sub3 unsupervised analysis")
 
         logger.info(f"Dataset shape: {df.shape}")
@@ -264,13 +264,13 @@ class Analyzer:
         plt.title("Temporal Clusters of Years by Genre Distribution")
         plt.legend()
         plt.tight_layout()
-        plt.savefig("results/sub3_temporal_clusters.png")
+        plt.savefig("results/s3/sub3_temporal_clusters.png")
         plt.close()
 
         pd.DataFrame({
             'year': year_genre_norm.index,
             'cluster': year_labels
-        }).to_excel("results/temporal_clusters.xlsx", index=False)
+        }).to_excel("results/s3/temporal_clusters.xlsx", index=False)
 
         # --- ANOVA on each genre across year‐clusters ---
         print("\n=== ANOVA: Temporal clusters ===")
@@ -298,7 +298,7 @@ class Analyzer:
         plt.ylabel("Avg. Proportion")
         plt.title("Genre Profiles of Temporal Clusters")
         plt.tight_layout()
-        plt.savefig("results/temporal_cluster_profiles.png")
+        plt.savefig("results/s3/temporal_cluster_profiles.png")
         plt.close()
 
         if 'country' in df.columns:
@@ -311,7 +311,7 @@ class Analyzer:
 
             # choose best k for countries
             best_k_countries = self._choose_k(country_genre_norm, k_min=2, k_max=15, tag="countries")
-            best_k_countries = 5
+            best_k_countries = 4
 
             pca2 = PCA(n_components=2, random_state=0)
             country_coords = pca2.fit_transform(country_genre_norm)
@@ -345,13 +345,13 @@ class Analyzer:
             plt.title("Regional Clusters of Countries by Genre Distribution")
             plt.legend()
             plt.tight_layout()
-            plt.savefig("results/sub3_regional_clusters.png")
+            plt.savefig("results/s3/sub3_regional_clusters.png")
             plt.close()
 
             pd.DataFrame({
                 'country': country_genre_norm.index,
                 'cluster': country_labels
-            }).to_excel("results/regional_clusters.xlsx", index=False)
+            }).to_excel("results/s3/regional_clusters.xlsx", index=False)
 
             # ANOVA for countries
             print("\n=== ANOVA: Regional clusters ===")
@@ -380,7 +380,7 @@ class Analyzer:
             plt.ylabel("Avg. Proportion")
             plt.title("Genre Profiles of Regional Clusters")
             plt.tight_layout()
-            plt.savefig("results/regional_cluster_profiles.png")
+            plt.savefig("results/s3/regional_cluster_profiles.png")
             plt.close()
 
 
@@ -415,7 +415,7 @@ class Analyzer:
         plt.xlabel("k")
         plt.ylabel("Inertia")
         plt.tight_layout()
-        plt.savefig(f"results/elbow_{tag}.png")
+        plt.savefig(f"results/s3/elbow_{tag}.png")
         plt.close()
 
         # silhouette
@@ -425,7 +425,7 @@ class Analyzer:
         plt.xlabel("k")
         plt.ylabel("Silhouette Score")
         plt.tight_layout()
-        plt.savefig(f"results/silhouette_{tag}.png")
+        plt.savefig(f"results/s3/silhouette_{tag}.png")
         plt.close()
 
         # pick best by silhouette
