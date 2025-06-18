@@ -212,6 +212,14 @@ class Analyzer:
         os.makedirs("results", exist_ok=True)
         logger.info("Starting sub3 unsupervised analysis")
 
+        df = df.loc[
+            df['country']
+            .notna()
+            .str.strip()
+            .str.lower()
+            .ne('not given')
+        ]
+
         tmp = df[['release_year', 'listed_in']].dropna()
         tmp['genre_list'] = tmp['listed_in'].str.split(',\s*')
         tmp = tmp.explode('genre_list')
