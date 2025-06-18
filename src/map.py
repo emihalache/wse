@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 
 # after loading
-clusters = pd.read_excel("../results/regional_clusters.xlsx")
+clusters = pd.read_excel("../results/s3/regional_clusters.xlsx")
 clusters["country_clean"] = clusters["country"].str.strip()
 
 world = gpd.read_file("https://datahub.io/core/geo-countries/r/countries.geojson")
@@ -58,4 +58,4 @@ map_df.plot(
 ax.set_axis_off()
 ax.set_title("Netflix Genre-Profile Clusters by Country")
 plt.tight_layout()
-plt.savefig("../results/country_cluster_map.png")
+plt.savefig("../results/s3/country_cluster_map.png")
