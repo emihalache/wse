@@ -229,7 +229,7 @@ class Analyzer:
 
         return df
     
-    
+
     def map_genre_categories(self, df):
         # Explode genres since the listen_in column contains genres separated by commas
         df_genre = df.copy()
@@ -471,7 +471,7 @@ class Analyzer:
         plt.clf() # Clear figure for next plot
 
 
-    def ratings_by_country_visualizations(self, df):
+    def genres_by_country_visualizations(self, df):
         # -----------------------------
         # Plot 5: Genre by Country Heatmap
         # -----------------------------
@@ -482,11 +482,11 @@ class Analyzer:
         # Order by the number of releases
         ordered_index = genre_by_country.sum(axis=1).sort_values(ascending=False).index
 
-        genre_by_country_heatmap = genre_by_country.loc[ordered_index]
+        genre_by_country = genre_by_country.loc[ordered_index]
 
         plt.figure(figsize=(14, 8))
-        sns.heatmap(genre_by_country_heatmap, annot=False, cmap='viridis')
-        plt.title("Genres by Country (Heatmap)")
+        sns.heatmap(genre_by_country, annot=False, cmap='viridis')
+        plt.title("Genres by Country")
         plt.xlabel("Genre")
         plt.ylabel("Country")
         plt.tight_layout()
@@ -503,15 +503,33 @@ class Analyzer:
         # Order by the number of releases
         ordered_index = genre_group_by_country.sum(axis=1).sort_values(ascending=False).index
 
-        genre_group_by_country_heatmap = genre_group_by_country.loc[ordered_index]
+        genre_group_by_country = genre_group_by_country.loc[ordered_index]
 
         plt.figure(figsize=(14, 8))
-        sns.heatmap(genre_group_by_country_heatmap, annot=False, cmap='viridis')
-        plt.title("Genre Groups by Country (Heatmap)")
+        sns.heatmap(genre_group_by_country, annot=False, cmap='viridis')
+        plt.title("Genre Groups by Country")
         plt.xlabel("Genre Group")
         plt.ylabel("Country")
         plt.tight_layout()
         plt.savefig("results/s2_6_genre_groups_by_country.png")
+        plt.clf() # Clear figure for next plot
+
+        # -----------------------------
+        # Plot 7: TV Show Sub-Genre by Country Heatmap
+        # -----------------------------
+
+        # Filter for TV Shows
+        df_tv_show = df[df['genre_group'] == 'TV Show']
+        # Count (Genre, Country) pairs
+        tv_show_subgenre_by_country = pd.crosstab(df_tv_show['Genre'], df_tv_show['country'])
+        
+        plt.figure(figsize=(14, 8))
+        sns.heatmap(tv_show_subgenre_by_country, annot=False, cmap='viridis')
+        plt.title('TV Show Sub-genres by Country')
+        plt.xlabel('Country')
+        plt.ylabel('TV Show Sub-Genre')
+        plt.tight_layout()
+        plt.savefig("results/s2_7_tv_show_subgenres_by_country.png")
         plt.clf() # Clear figure for next plot
         
 
@@ -533,4 +551,4 @@ class Analyzer:
         self.ratings_by_country_visualizations(df)
         
         ''' Visualizations of Genres by Country '''
-        self.ratings_by_country_visualizations(df)
+        self.genres_by_country_visualizations(df)
