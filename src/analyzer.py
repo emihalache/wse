@@ -311,6 +311,7 @@ class Analyzer:
         # Explode genres since the listen_in column contains genres separated by commas
         df['Genre'] = df['listed_in'].str.split(', ')
         df = df.explode('Genre')
+        df['Genre'] = df['Genre'].str.strip()  # Remove leading/trailing whitespace
 
         print("Dataset before cleaning genres: ", df['Genre'].unique().shape)
         # The dataset covers 42 genres
@@ -394,6 +395,7 @@ class Analyzer:
         plt.xlabel("Country")
         plt.ylabel("Number of Releases")
         plt.legend(title='Content Type')
+        plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         plt.savefig("results/s2_1_releases_by_country.png")
         plt.clf()  # Clear figure for next plot
@@ -401,17 +403,20 @@ class Analyzer:
         # -----------------------------
         # Plot 2: Proportions of type of content released per country
         # -----------------------------
-        
-        # Normalize to get proportions of content type per country
+
+        # Normalize each row to get proportions
         normalized = releases_by_country.div(releases_by_country.sum(axis=1), axis=0)
 
-        type_proportions_by_country = normalized.loc[ordered_index]
+        # Order countries by proportion of Movies descending
+        type_proportions_by_country = normalized.sort_values(by='Movie', ascending=False)
 
+        # Plot normalized stacked bar chart with this order
         type_proportions_by_country.plot(kind='bar', stacked=True, figsize=(10, 5), colormap='tab20')
         plt.title("Proportion of Content Type by Country")
         plt.xlabel("Country")
         plt.ylabel("Percentage")
         plt.legend(title='Content Type', bbox_to_anchor=(1, 1), loc='upper left')
+        plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         plt.savefig("results/s2_2_types_by_country.png")
         plt.clf()  # Clear figure for next plot
@@ -440,9 +445,11 @@ class Analyzer:
         plt.xlabel("Country")
         plt.ylabel("Percentage")
         plt.legend(title='Maturity Rating', bbox_to_anchor=(1, 1), loc='upper left')
+        plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         plt.savefig("results/s2_3_normalized_ratings_by_country.png")
         plt.clf() # Clear figure for next plot
+
 
         # -----------------------------
         # Plot 4: Proportions of Age Appropriateness Content by Country
@@ -451,24 +458,34 @@ class Analyzer:
         # Grouping releases by country and content type
         grouped_rating_by_country = df.groupby(['country', 'age_appropriateness']).size().unstack(fill_value=0)
 
-        # Normalize to get proportions of maturity ratings per country
+        # Normalize to get proportions of age appropriateness per country
         normalized = grouped_rating_by_country.div(grouped_rating_by_country.sum(axis=1), axis=0)
 
-        # Order by the number of releases
-        ordered_index = normalized.loc[grouped_rating_by_country.sum(axis=1).sort_values(ascending=False).index]
+        key_group = 'Adult (17+)'
+        ordered_index = normalized.sort_values(by=key_group, ascending=False)
 
-        # Order rating categories by average size across all countries for better visualization
-        # So generally the smallest one is at the bottom, and largest is at the top
-        grouped_rating_proportions_by_country = ordered_index[ordered_index.mean().sort_values(ascending=True).index]
+        # Order by sesired column stacking order: from least appropriate to most
+        desired_order = [
+            'Not Rated',
+            'Young Children (PG Suggested)',
+            'Young Children',
+            'Older Children (7+)',
+            'Teens (PG Strongly Cautioned)',
+            'Adult (17+)',
+            'All Ages'
+        ]
+        grouped_rating_proportions_by_country = ordered_index[desired_order]
 
         grouped_rating_proportions_by_country.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
-        plt.title("Normalized Age Appropriateness by Country")
+        plt.title("Normalized Age Appropriateness by Country (Adult to Child Order)")
         plt.xlabel("Country")
-        plt.ylabel("Percentage")
+        plt.ylabel("Proportion")
         plt.legend(title='Age Appropriateness', bbox_to_anchor=(1, 1), loc='upper left')
+        plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         plt.savefig("results/s2_4_normalized_grouped_ratings_by_country.png")
         plt.clf() # Clear figure for next plot
+
 
 
     def genres_by_country_visualizations(self, df):
@@ -489,6 +506,7 @@ class Analyzer:
         plt.title("Genres by Country")
         plt.xlabel("Genre")
         plt.ylabel("Country")
+        plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         plt.savefig("results/s2_5_genres_by_country.png")
         plt.clf() # Clear figure for next plot
@@ -510,6 +528,7 @@ class Analyzer:
         plt.title("Genre Groups by Country")
         plt.xlabel("Genre Group")
         plt.ylabel("Country")
+        plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         plt.savefig("results/s2_6_genre_groups_by_country.png")
         plt.clf() # Clear figure for next plot
@@ -528,6 +547,7 @@ class Analyzer:
         plt.title('TV Show Sub-genres by Country')
         plt.xlabel('TV Show Sub-Genre')
         plt.ylabel('Country')
+        plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         plt.savefig("results/s2_7_tv_show_subgenres_by_country.png")
         plt.clf() # Clear figure for next plot
