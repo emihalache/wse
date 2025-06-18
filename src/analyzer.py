@@ -1,7 +1,15 @@
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import logging
 import os
+from adjustText import adjust_text
+from scipy.stats import f_oneway
+
+
+
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 
 from distinctipy import distinctipy
 
@@ -200,4 +208,218 @@ class Analyzer:
         # Skip rows with missing release_year
         df = df[df['listed_in'].notnull()]
 
+    def sub3(self, df):
+        os.makedirs("results", exist_ok=True)
+        logger.info("Starting sub3 unsupervised analysis")
 
+        tmp = df[['release_year', 'listed_in']].dropna()
+        tmp['genre_list'] = tmp['listed_in'].str.split(',\s*')
+        tmp = tmp.explode('genre_list')
+        year_genre = tmp.groupby(['release_year', 'genre_list']).size().unstack(fill_value=0)
+        year_genre_norm = year_genre.div(year_genre.sum(axis=1), axis=0)
+
+        # choose best k for years
+        best_k_years = self._choose_k(year_genre_norm, k_min=2, k_max=15, tag="years")
+        best_k_years = 4
+
+        pca = PCA(n_components=2, random_state=0)
+        year_coords = pca.fit_transform(year_genre_norm)
+        kmeans_y = KMeans(n_clusters=best_k_years, random_state=0).fit(year_coords)
+        year_labels = kmeans_y.labels_
+
+        plt.figure(figsize=(10, 8))
+        colors = distinctipy.get_colors(best_k_years)
+        for c in range(best_k_years):
+            mask = (year_labels == c)
+            plt.scatter(year_coords[mask, 0], year_coords[mask, 1],
+                        color=colors[c], label=f'Cluster {c}')
+
+        texts = []
+        for idx, yr in enumerate(year_genre_norm.index):
+            x, y = year_coords[idx]
+            texts.append(
+                plt.text(x, y, str(int(yr)),
+                         fontsize=8, alpha=0.75)
+            )
+
+        adjust_text(
+            texts,
+            only_move={'points': 'xy', 'texts': 'xy'},
+            force_text=(0.5, 0.5),
+            force_points=(0.5, 0.5),
+            expand_text=(1.2, 1.2),
+            expand_points=(1.2, 1.2),
+            arrowprops=dict(arrowstyle='-', color='black', lw=0.5, alpha=0.5)
+        )
+
+        plt.title("Temporal Clusters of Years by Genre Distribution")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig("results/sub3_temporal_clusters.png")
+        plt.close()
+
+        pd.DataFrame({
+            'year': year_genre_norm.index,
+            'cluster': year_labels
+        }).to_excel("results/temporal_clusters.xlsx", index=False)
+
+        # --- ANOVA on each genre across year‐clusters ---
+        print("\n=== ANOVA: Temporal clusters ===")
+        for genre in year_genre_norm.columns:
+            groups = [year_genre_norm[year_labels == c][genre] for c in np.unique(year_labels)]
+            stat, p = f_oneway(*groups)
+            if p < 0.01:
+                print(f"{genre:20s} p={p:.2e}")
+
+        year_centroids = (
+            year_genre_norm
+            .assign(cluster=year_labels)
+            .groupby('cluster')
+            .mean()
+        )
+        # Print top 5 genres per cluster
+        for c, row in year_centroids.iterrows():
+            top5 = row.sort_values(ascending=False).head(5)
+            print(f"Temporal Cluster {c} top genres:")
+            print(top5.to_string(), "\n")
+
+        # Plot centroid bar chart
+        plt.figure(figsize=(10, 6))
+        year_centroids.T.plot.bar(ax=plt.gca())
+        plt.ylabel("Avg. Proportion")
+        plt.title("Genre Profiles of Temporal Clusters")
+        plt.tight_layout()
+        plt.savefig("results/temporal_cluster_profiles.png")
+        plt.close()
+
+        if 'country' in df.columns:
+            tmp2 = df[['country', 'listed_in']].dropna()
+            tmp2['country_list'] = tmp2['country'].str.split(',\s*')
+            tmp2['genre_list'] = tmp2['listed_in'].str.split(',\s*')
+            tmp2 = tmp2.explode('country_list').explode('genre_list')
+            country_genre = tmp2.groupby(['country_list', 'genre_list']).size().unstack(fill_value=0)
+            country_genre_norm = country_genre.div(country_genre.sum(axis=1), axis=0)
+
+            # choose best k for countries
+            best_k_countries = self._choose_k(country_genre_norm, k_min=2, k_max=15, tag="countries")
+            best_k_countries = 5
+
+            pca2 = PCA(n_components=2, random_state=0)
+            country_coords = pca2.fit_transform(country_genre_norm)
+            kmeans_c = KMeans(n_clusters=best_k_countries, random_state=0).fit(country_coords)
+            country_labels = kmeans_c.labels_
+
+            plt.figure(figsize=(12, 10))
+            colors2 = distinctipy.get_colors(best_k_countries)
+            for c in range(best_k_countries):
+                mask = (country_labels == c)
+                plt.scatter(country_coords[mask, 0], country_coords[mask, 1],
+                            color=colors2[c], label=f'Cluster {c}')
+
+            texts = []
+            for idx, country in enumerate(country_genre_norm.index):
+                x, y = country_coords[idx]
+                texts.append(
+                    plt.text(x, y, country, fontsize=7, alpha=0.8)
+                )
+
+            adjust_text(
+                texts,
+                only_move={'points': 'xy', 'texts': 'xy'},
+                force_text=(0.5, 0.5),
+                force_points=(0.5, 0.5),
+                expand_text=(1.2, 1.2),
+                expand_points=(1.2, 1.2),
+                arrowprops=dict(arrowstyle='-', color='black', lw=0.5, alpha=0.5)
+            )
+
+            plt.title("Regional Clusters of Countries by Genre Distribution")
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig("results/sub3_regional_clusters.png")
+            plt.close()
+
+            pd.DataFrame({
+                'country': country_genre_norm.index,
+                'cluster': country_labels
+            }).to_excel("results/regional_clusters.xlsx", index=False)
+
+            # ANOVA for countries
+            print("\n=== ANOVA: Regional clusters ===")
+            for genre in country_genre_norm.columns:
+                groups = [country_genre_norm[country_labels==c][genre] for c in np.unique(country_labels)]
+                stat,p = f_oneway(*groups)
+                if p < 0.01:
+                    print(f"{genre:20s} p={p:.2e}")
+
+
+            # Profile regional clusters
+            country_centroids = (
+                country_genre_norm
+                .assign(cluster=country_labels)
+                .groupby('cluster')
+                .mean()
+            )
+            for c, row in country_centroids.iterrows():
+                top5 = row.sort_values(ascending=False).head(5)
+                print(f"Regional Cluster {c} top genres:")
+                print(top5.to_string(), "\n")
+
+            # Plot centroid bar chart
+            plt.figure(figsize=(12, 6))
+            country_centroids.T.plot.bar(ax=plt.gca())
+            plt.ylabel("Avg. Proportion")
+            plt.title("Genre Profiles of Regional Clusters")
+            plt.tight_layout()
+            plt.savefig("results/regional_cluster_profiles.png")
+            plt.close()
+
+
+        else:
+            logger.warning("No country column—skipping regional analysis")
+
+        logger.info("sub3 analysis complete")
+
+
+    @staticmethod
+    def _choose_k(X, k_min=2, k_max=10, tag=""):
+        """
+        Runs KMeans for k in [k_min..k_max], saves:
+         - elbow plot (inertia vs k) to results/elbow_{tag}.png
+         - silhouette plot to results/silhouette_{tag}.png
+        Returns the k with the highest silhouette score.
+        """
+        from sklearn.cluster import KMeans
+        from sklearn.metrics import silhouette_score
+
+        inertias, silhouettes = [], []
+        Ks = list(range(k_min, k_max + 1))
+        for k in Ks:
+            km = KMeans(n_clusters=k, random_state=0).fit(X)
+            inertias.append(km.inertia_)
+            silhouettes.append(silhouette_score(X, km.labels_))
+
+        # elbow
+        plt.figure(figsize=(6,4))
+        plt.plot(Ks, inertias, marker='o')
+        plt.title(f"Elbow Plot ({tag})")
+        plt.xlabel("k")
+        plt.ylabel("Inertia")
+        plt.tight_layout()
+        plt.savefig(f"results/elbow_{tag}.png")
+        plt.close()
+
+        # silhouette
+        plt.figure(figsize=(6,4))
+        plt.plot(Ks, silhouettes, marker='o')
+        plt.title(f"Silhouette Scores ({tag})")
+        plt.xlabel("k")
+        plt.ylabel("Silhouette Score")
+        plt.tight_layout()
+        plt.savefig(f"results/silhouette_{tag}.png")
+        plt.close()
+
+        # pick best by silhouette
+        best_k = Ks[silhouettes.index(max(silhouettes))]
+        logger.info(f"Best k for {tag}: {best_k}")
+        return best_k
