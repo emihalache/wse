@@ -521,13 +521,13 @@ class Analyzer:
         # Filter for TV Shows
         df_tv_show = df[df['genre_group'] == 'TV Show']
         # Count (Genre, Country) pairs
-        tv_show_subgenre_by_country = pd.crosstab(df_tv_show['Genre'], df_tv_show['country'])
+        tv_show_subgenre_by_country = pd.crosstab(df_tv_show['country'], df_tv_show['Genre'])
         
         plt.figure(figsize=(14, 8))
         sns.heatmap(tv_show_subgenre_by_country, annot=False, cmap='viridis')
         plt.title('TV Show Sub-genres by Country')
-        plt.xlabel('Country')
-        plt.ylabel('TV Show Sub-Genre')
+        plt.xlabel('TV Show Sub-Genre')
+        plt.ylabel('Country')
         plt.tight_layout()
         plt.savefig("results/s2_7_tv_show_subgenres_by_country.png")
         plt.clf() # Clear figure for next plot
