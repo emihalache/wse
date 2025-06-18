@@ -201,7 +201,133 @@ class Analyzer:
         # Skip rows with missing release_year
         df = df[df['listed_in'].notnull()]
 
-    def map_rating_to_age_appropriateness(df):
+
+    def country_preprocessing(self, df):
+        # pd.set_option("display.max_columns", None)
+        # pd.set_option("display.max_rows", None)
+
+        # print(df['country'].unique())
+        # Remove rows where country is "Not Given"
+        df = df[df['country'] != 'Not Given']
+
+        # The dataset covers 85 countries
+        print("Dataset before cleaning countries: ", df['country'].unique().shape)
+        
+        country_counts = df['country'].value_counts()
+        # pd.set_option("display.max_rows", None)
+        # print(country_counts)
+
+        # adjust here the threshold that defines a significant number of entries
+        # per country to be suitable for analysis
+        min_entries = 50
+        df_signif_count = country_counts[country_counts >= min_entries].index.tolist()
+        df = df[df['country'].isin(df_signif_count)]
+
+        # We will analyse 24 countries
+        print("Dataset after cleaning countries: ", df['country'].unique().shape)
+        # print(df['country'].unique())
+
+        return df
+    
+    
+    def map_genre_categories(self, df):
+        # Explode genres since the listen_in column contains genres separated by commas
+        df_genre = df.copy()
+        df_genre['Genre'] = df_genre['listed_in'].str.split(', ')
+        df_genre = df_genre.explode('Genre')
+
+        # Remove entries where the genre is just 'Movies'
+        df_genre = df_genre[df_genre['Genre'] != 'Movies']
+
+        # Mapping genres to their broader categories,
+        # according to Netflix codes https://www.netflix-codes.com/
+        group_genres = {     
+            'Action & Adventure': 'Action & adventure',
+
+            'Anime Features': 'Anime',
+            'Anime Series': 'Anime',
+
+            'Children & Family Movies': 'Children & family movies',
+
+            'Classic Movies': 'Classic Movies',
+
+            'Comedies': 'Comedies',
+            'Stand-Up Comedy': 'Comedies',
+            'Stand-Up Comedy & Talk Shows': 'Comedies',
+
+            'Documentaries': 'Documentaries',
+            'Docuseries': 'Documentaries',
+
+            'Dramas': 'Dramas',
+
+            'International Movies': 'Foreign movies',
+
+            'Horror Movies': 'Horror movies',
+
+            'Independent Movies': 'Independent movies',
+
+            'LGBTQ Movies': 'LGBTQ+',
+
+            'Music & Musicals': 'Music',
+
+            'Romantic Movies': 'Romantic movies',
+
+            'Sci-Fi & Fantasy': 'Sci - Fi & Fantasy',
+
+            'Sports Movies': 'Sports movies',
+            
+            'Crime TV Shows': 'TV Show',
+            'TV Action & Adventure': 'TV Show',
+            'TV Dramas': 'TV Show',
+            'TV Horror': 'TV Show',
+            'TV Mysteries': 'TV Show',
+            'British TV Shows': 'TV Show',
+            'Reality TV': 'TV Show',
+            'Kids\' TV': 'TV Show',
+            'TV Comedies': 'TV Show',
+            'Korean TV Shows': 'TV Show',
+            'Science & Nature TV': 'TV Show',
+            'TV Shows': 'TV Show',
+            'International TV Shows': 'TV Show',
+            'Spanish-Language TV Shows': 'TV Show',
+            'TV Thrillers': 'TV Show',
+            'Romantic TV Shows': 'TV Show',
+            'TV Sci-Fi & Fantasy': 'TV Show',
+            'Classic & Cult TV': 'TV Show',
+            
+            'Thrillers': 'Thrillers',
+
+            'Teen TV Shows': 'Teen TV shows',
+
+            'Faith & Spirituality': 'Others',
+            'Cult Movies': 'Others',
+        }
+
+        df_genre['genre_group'] = df_genre['Genre'].map(group_genres).fillna('Others')
+
+        return df_genre
+
+    def genre_preprocessing(self, df):
+        # Explode genres since the listen_in column contains genres separated by commas
+        df['Genre'] = df['listed_in'].str.split(', ')
+        df = df.explode('Genre')
+
+        print("Dataset before cleaning genres: ", df['Genre'].unique().shape)
+        # The dataset covers 42 genres
+
+        # Map genres to broader categories
+        df = self.map_genre_categories(df)
+        # print(df['genre_group'].value_counts())
+
+        # But we can still see the distribution within the broad category TV Shows
+        # print(df[df['genre_group'] == 'TV Show']['Genre'].value_counts())
+
+        print("Dataset after cleaning genres: ", df['genre_group'].unique().shape)
+
+        return df
+    
+
+    def map_rating_to_age_appropriateness(self, df):
         # Mapping maturity ratings to their broader categories, because:
         # - Some categories only differ by terminology used in movies vs TV shows
         # - Our analysis is focused on the age appropriateness of content, not the reasons why 
@@ -239,43 +365,19 @@ class Analyzer:
 
         df['age_appropriateness'] = df['rating'].map(group_maturity_ratings).fillna('Other')
 
-        return df
-
-
-    def sub2(self, df):
-        print("****************************** S2: Regional Variations in Content Characteristics ******************************")
-
-        # pd.set_option("display.max_columns", None)
-        # pd.set_option("display.max_rows", None)
-
-        # Ensure results directory exists
-        os.makedirs("results", exist_ok=True)
-
-        ''' Data Cleaning and Preparation '''
-
-        # print(df['country'].unique())
-        # Remove rows where country is "Not Given"
-        df = df[df['country'] != 'Not Given']
-
-        # The dataset covers 85 countries
-        print("Dataset before cleaning countries: ", df['country'].unique().shape)
+        return df  
+    
+    def rating_preprocessing(self, df):
+        print("Dataset before cleaning maturity ratings: ", df['rating'].unique().shape)
         
-        country_counts = df['country'].value_counts()
-        # pd.set_option("display.max_rows", None)
-        # print(country_counts)
+        df = self.map_rating_to_age_appropriateness(df)
 
-        # adjust here the threshold that defines a significant number of entries
-        # per country to be suitable for analysis
-        min_entries = 50
-        df_signif_count = country_counts[country_counts >= min_entries].index.tolist()
-        df = df[df['country'].isin(df_signif_count)]
+        print("Dataset after cleaning maturity ratings: ", df['age_appropriateness'].unique().shape)
 
-        # We will analyse 24 countries
-        print("Dataset after cleaning countries: ", df['country'].unique().shape)
-        print(df['country'].unique())
+        return df
+    
 
-        ''' Visualizations of Content Type by Country '''
-
+    def type_by_country_visualizations(self, df):
         # Grouping releases by country and content type
         releases_by_country = df.groupby(['country', 'type']).size().unstack(fill_value=0)
 
@@ -315,8 +417,7 @@ class Analyzer:
         plt.clf()  # Clear figure for next plot
 
 
-        ''' Visualizations of Maturity Ratings by Country '''
-
+    def ratings_by_country_visualizations(self, df):
         # -----------------------------
         # Plot 3: Maturity Rating Proportions by Country
         # -----------------------------
@@ -347,8 +448,6 @@ class Analyzer:
         # Plot 4: Proportions of Age Appropriateness Content by Country
         # -----------------------------
 
-        df = self.map_rating_to_age_appropriateness(df)
-
         # Grouping releases by country and content type
         grouped_rating_by_country = df.groupby(['country', 'age_appropriateness']).size().unstack(fill_value=0)
 
@@ -372,29 +471,17 @@ class Analyzer:
         plt.clf() # Clear figure for next plot
 
 
-        ''' Visualizations of Genres by Country '''
-
-        # Explode genres since the listen_in column contains genres separated by commas
-        df_genre = df.copy()
-        df_genre['Genre'] = df_genre['listed_in'].str.split(', ')
-        df_genre = df_genre.explode('Genre')
-
-        print("Dataset before cleaning genres: ", df_genre['Genre'].unique().shape)
-        
-        # There are 42 genres in the dataset
-        genre_counts = df_genre['Genre'].value_counts()
-        pd.set_option("display.max_rows", None)
-        print(genre_counts)
+    def ratings_by_country_visualizations(self, df):
+        # -----------------------------
+        # Plot 5: Genre by Country Heatmap
+        # -----------------------------
 
         # Grouping releases by country and genre
-        genre_by_country = df_genre.groupby(['country', 'Genre']).size().unstack(fill_value=0)
+        genre_by_country = df.groupby(['country', 'Genre']).size().unstack(fill_value=0)
 
         # Order by the number of releases
         ordered_index = genre_by_country.sum(axis=1).sort_values(ascending=False).index
 
-        # -----------------------------
-        # Plot 5: Genre by Country Heatmap
-        # -----------------------------
         genre_by_country_heatmap = genre_by_country.loc[ordered_index]
 
         plt.figure(figsize=(14, 8))
@@ -407,21 +494,43 @@ class Analyzer:
         plt.clf() # Clear figure for next plot
         
         # -----------------------------
-        # Plot 6: Genre by Country
+        # Plot 6: Genre Groups by Country Heatmap
         # -----------------------------
 
-        '''
-        # Normalize to get proportions of genres per country
-        normalized = genre_by_country.div(genre_by_country.sum(axis=1), axis=0)
+        # Grouping releases by country and genre group
+        genre_group_by_country = df.groupby(['country', 'genre_group']).size().unstack(fill_value=0)
 
-        genre_by_country_norm = normalized.loc[ordered_index]
+        # Order by the number of releases
+        ordered_index = genre_group_by_country.sum(axis=1).sort_values(ascending=False).index
 
-        genre_by_country_norm.plot(kind='bar', stacked=True, figsize=(14, 8), colormap='tab20')
-        plt.title("Normalized Genres by Country")
-        plt.xlabel("Country")
-        plt.ylabel("Percentage")
-        # plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title="Genre")
+        genre_group_by_country_heatmap = genre_group_by_country.loc[ordered_index]
+
+        plt.figure(figsize=(14, 8))
+        sns.heatmap(genre_group_by_country_heatmap, annot=False, cmap='viridis')
+        plt.title("Genre Groups by Country (Heatmap)")
+        plt.xlabel("Genre Group")
+        plt.ylabel("Country")
         plt.tight_layout()
-        plt.savefig("results/s2_6_normalized_genre_by_country.png")
+        plt.savefig("results/s2_6_genre_groups_by_country.png")
         plt.clf() # Clear figure for next plot
-        '''
+        
+
+    def sub2(self, df):
+        print("****************************** S2: Regional Variations in Content Characteristics ******************************")
+
+        # Ensure results directory exists
+        os.makedirs("results", exist_ok=True)
+
+        ''' Data Cleaning and Preparation '''
+        df = self.country_preprocessing(df)
+        df = self.genre_preprocessing(df)
+        df = self.rating_preprocessing(df)
+
+        ''' Visualizations of Content Type by Country '''
+        self.type_by_country_visualizations(df)
+
+        ''' Visualizations of Maturity Ratings by Country '''
+        self.ratings_by_country_visualizations(df)
+        
+        ''' Visualizations of Genres by Country '''
+        self.ratings_by_country_visualizations(df)
