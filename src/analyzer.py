@@ -6,6 +6,9 @@ import os
 from adjustText import adjust_text
 from scipy.stats import f_oneway
 
+from distinctipy import get_colors
+from matplotlib.colors import ListedColormap
+
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
@@ -205,6 +208,22 @@ class Analyzer:
         df = df[df['listed_in'].notnull()]
 
     def sub3(self, df):
+        import matplotlib as mpl
+        # ———————————————
+        # Increase all font sizes globally
+        mpl.rcParams.update({
+            'font.size': 14,  # default text size
+            'axes.titlesize': 16,  # axes title
+            'axes.labelsize': 14,  # x/y labels
+            'xtick.labelsize': 12,  # x tick labels
+            'ytick.labelsize': 12,  # y tick labels
+            'legend.fontsize': 12,  # legend text
+            'legend.title_fontsize': 12,  # legend title
+            'figure.titlesize': 18,  # figure suptitle, if any
+        })
+
+        LABEL_FONT = 13
+
         os.makedirs("results/s3", exist_ok=True)
         logger.info("Starting sub3 unsupervised analysis")
 
@@ -247,7 +266,7 @@ class Analyzer:
             x, y = year_coords[idx]
             texts.append(
                 plt.text(x, y, str(int(yr)),
-                         fontsize=8, alpha=0.75)
+                         fontsize=LABEL_FONT, alpha=0.75)
             )
 
         adjust_text(
@@ -329,7 +348,7 @@ class Analyzer:
             for idx, country in enumerate(country_genre_norm.index):
                 x, y = country_coords[idx]
                 texts.append(
-                    plt.text(x, y, country, fontsize=7, alpha=0.8)
+                    plt.text(x, y, country, fontsize=LABEL_FONT, alpha=0.8)
                 )
 
             adjust_text(

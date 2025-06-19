@@ -2,7 +2,20 @@ import geopandas as gpd
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import matplotlib as mpl
 
+# ———————————————
+# Increase all font sizes globally
+mpl.rcParams.update({
+    'font.size': 14,  # default text size
+    'axes.titlesize': 16,  # axes title
+    'axes.labelsize': 14,  # x/y labels
+    'xtick.labelsize': 12,  # x tick labels
+    'ytick.labelsize': 12,  # y tick labels
+    'legend.fontsize': 12,  # legend text
+    'legend.title_fontsize': 12,  # legend title
+    'figure.titlesize': 18,  # figure suptitle, if any
+})
 # after loading
 clusters = pd.read_excel("../results/s3/regional_clusters.xlsx")
 clusters["country_clean"] = clusters["country"].str.strip()
