@@ -5,6 +5,7 @@ import logging
 import os
 from adjustText import adjust_text
 from scipy.stats import f_oneway
+import json
 
 from distinctipy import get_colors
 from matplotlib.colors import ListedColormap
@@ -227,6 +228,12 @@ class Analyzer:
         os.makedirs("results/s3", exist_ok=True)
         logger.info("Starting sub3 unsupervised analysis")
 
+        # Replace historical country names
+        df['country'] = df['country'].str.strip().replace({
+            'West Germany': 'Germany',
+            'Soviet Union': 'Russia'
+        })
+
         output_path = "results/s3/sub3_output.txt"
         output_file = open(output_path, "w")
 
@@ -332,17 +339,30 @@ class Analyzer:
             best_k_countries = self._choose_k(country_genre_norm, k_min=2, k_max=15, tag="countries")
             best_k_countries = 4
 
+
             pca2 = PCA(n_components=2, random_state=0)
             country_coords = pca2.fit_transform(country_genre_norm)
             kmeans_c = KMeans(n_clusters=best_k_countries, random_state=0).fit(country_coords)
             country_labels = kmeans_c.labels_
 
             plt.figure(figsize=(12, 10))
-            colors2 = distinctipy.get_colors(best_k_countries)
+            cluster_colors = distinctipy.get_colors(best_k_countries)
+            # convert to hex strings so matplotlib can consume them
+            cluster_hex = [distinctipy.get_hex(c) for c in cluster_colors]
+            cmap = ListedColormap(cluster_hex)
+
+            plt.figure(figsize=(12, 10))
             for c in range(best_k_countries):
                 mask = (country_labels == c)
-                plt.scatter(country_coords[mask, 0], country_coords[mask, 1],
-                            color=colors2[c], label=f'Cluster {c}')
+                plt.scatter(
+                    country_coords[mask, 0],
+                    country_coords[mask, 1],
+                    color=cluster_hex[c],
+                    label=f"Cluster {c}"
+                )
+
+            with open("results/s3/cluster_palette.json", "w") as f:
+                json.dump(cluster_hex, f)
 
             texts = []
             for idx, country in enumerate(country_genre_norm.index):

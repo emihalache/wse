@@ -134,6 +134,12 @@ def extract_countries_to_csv():
     # Extract countries
     logger.info("Extracting countries from 'country' column...")
 
+    # Replace historical country names
+    df['country'] = df['country'].str.strip().replace({
+        'West Germany': 'Germany',
+        'Soviet Union': 'Russia'
+    })
+
     # Remove rows with null values in country
     df_clean = df[df['country'].notnull()].copy()
 
