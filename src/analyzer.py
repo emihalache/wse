@@ -6,14 +6,12 @@ import os
 from adjustText import adjust_text
 from scipy.stats import f_oneway
 
-
-
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
 from distinctipy import distinctipy
 
-#region logging stuff
+# region logging stuff
 # Set up logging to file and console
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -35,7 +33,9 @@ console_handler.setFormatter(formatter)
 if not logger.hasHandlers():
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-#endregion
+
+
+# endregion
 
 class Analyzer:
     def sub1(self, df):
@@ -45,7 +45,7 @@ class Analyzer:
         if 'release_year' not in df.columns:
             print("release_year column not found.")
             return
-        
+
         # Convert release_year to datetime
         df['Date_N'] = pd.to_datetime(df['release_year'].astype(int).astype(str) + '-01-01')
         df['Year'] = df['Date_N'].dt.year
@@ -67,14 +67,13 @@ class Analyzer:
         releases_df.columns = ['Year', 'Count']
         releases_df.to_excel("results/releases_by_year.xlsx", index=False)
 
-
         # -----------------------------
         # Plot 2: Movies per genre per year
         # -----------------------------
         if 'listed_in' not in df.columns:
             print("listed_in column not found.")
             return
-        
+
         # Split the 'listed_in' column by comma and explode
         df['Genre'] = df['listed_in'].str.split(', ')
         df_exploded = df.explode('Genre')
@@ -90,7 +89,6 @@ class Analyzer:
         for i, (genre, color) in enumerate(zip(genre_counts.columns, distinct_colors)):
             linestyle = linestyles[i % len(linestyles)]
             plt.plot(genre_counts.index, genre_counts[genre], label=genre, color=color, linestyle=linestyle)
-
 
         plt.title("Number of Movies per Genre per Year")
         plt.xlabel("Year")
@@ -155,7 +153,6 @@ class Analyzer:
         # Save to Excel
         rating_counts.to_excel("results/ratings_per_year.xlsx")
 
-        
         # -----------------------------
         # Plot 5: Top 10 Directors per Year
         # -----------------------------
@@ -199,7 +196,6 @@ class Analyzer:
         # # Save to Excel
         # pivot_df.to_excel("results/top10_directors_per_year.xlsx")
 
-
     def genre(self, df):
         if 'listed_in' not in df.columns:
             print("listed_in column not found.")
@@ -211,6 +207,9 @@ class Analyzer:
     def sub3(self, df):
         os.makedirs("results/s3", exist_ok=True)
         logger.info("Starting sub3 unsupervised analysis")
+
+        output_path = "results/s3/sub3_output.txt"
+        output_file = open(output_path, "w")
 
         logger.info(f"Dataset shape: {df.shape}")
         df = df[
@@ -272,13 +271,14 @@ class Analyzer:
             'cluster': year_labels
         }).to_excel("results/s3/temporal_clusters.xlsx", index=False)
 
-        # --- ANOVA on each genre across year‐clusters ---
-        print("\n=== ANOVA: Temporal clusters ===")
+        # write ANOVA results for temporal clusters
+        print("\n=== ANOVA: Temporal clusters ===", file=output_file)
+
         for genre in year_genre_norm.columns:
             groups = [year_genre_norm[year_labels == c][genre] for c in np.unique(year_labels)]
             stat, p = f_oneway(*groups)
             if p < 0.01:
-                print(f"{genre:20s} p={p:.2e}")
+                print(f"{genre:20s} p={p:.2e}", file=output_file)
 
         year_centroids = (
             year_genre_norm
@@ -286,11 +286,11 @@ class Analyzer:
             .groupby('cluster')
             .mean()
         )
-        # Print top 5 genres per cluster
+
         for c, row in year_centroids.iterrows():
             top5 = row.sort_values(ascending=False).head(5)
-            print(f"Temporal Cluster {c} top genres:")
-            print(top5.to_string(), "\n")
+            print(f"\nTemporal Cluster {c} top genres:", file=output_file)
+            print(top5.to_string(), file=output_file)
 
         # Plot centroid bar chart
         plt.figure(figsize=(10, 6))
@@ -354,13 +354,12 @@ class Analyzer:
             }).to_excel("results/s3/regional_clusters.xlsx", index=False)
 
             # ANOVA for countries
-            print("\n=== ANOVA: Regional clusters ===")
+            print("\n=== ANOVA: Regional clusters ===", file=output_file)
             for genre in country_genre_norm.columns:
-                groups = [country_genre_norm[country_labels==c][genre] for c in np.unique(country_labels)]
-                stat,p = f_oneway(*groups)
+                groups = [country_genre_norm[country_labels == c][genre] for c in np.unique(country_labels)]
+                stat, p = f_oneway(*groups)
                 if p < 0.01:
-                    print(f"{genre:20s} p={p:.2e}")
-
+                    print(f"{genre:20s} p={p:.2e}", file=output_file)
 
             # Profile regional clusters
             country_centroids = (
@@ -371,8 +370,8 @@ class Analyzer:
             )
             for c, row in country_centroids.iterrows():
                 top5 = row.sort_values(ascending=False).head(5)
-                print(f"Regional Cluster {c} top genres:")
-                print(top5.to_string(), "\n")
+                print(f"\nRegional Cluster {c} top genres:", file=output_file)
+                print(top5.to_string(), file=output_file)
 
             # Plot centroid bar chart
             plt.figure(figsize=(12, 6))
@@ -382,13 +381,11 @@ class Analyzer:
             plt.tight_layout()
             plt.savefig("results/s3/regional_cluster_profiles.png")
             plt.close()
-
-
         else:
             logger.warning("No country column—skipping regional analysis")
 
+        output_file.close()
         logger.info("sub3 analysis complete")
-
 
     @staticmethod
     def _choose_k(X, k_min=2, k_max=10, tag=""):
@@ -409,7 +406,7 @@ class Analyzer:
             silhouettes.append(silhouette_score(X, km.labels_))
 
         # elbow
-        plt.figure(figsize=(6,4))
+        plt.figure(figsize=(6, 4))
         plt.plot(Ks, inertias, marker='o')
         plt.title(f"Elbow Plot ({tag})")
         plt.xlabel("k")
@@ -419,7 +416,7 @@ class Analyzer:
         plt.close()
 
         # silhouette
-        plt.figure(figsize=(6,4))
+        plt.figure(figsize=(6, 4))
         plt.plot(Ks, silhouettes, marker='o')
         plt.title(f"Silhouette Scores ({tag})")
         plt.xlabel("k")
