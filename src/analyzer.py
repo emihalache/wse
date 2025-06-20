@@ -49,6 +49,8 @@ class Analyzer:
         os.makedirs("results/evaluation", exist_ok=True)
         
     def sub1(self, df):
+        logger.info("****************************** S1: Temporal Trends in Global Content *******************************************")
+
         if 'release_year' not in df.columns:
             print("release_year column not found.")
             return
@@ -230,6 +232,8 @@ class Analyzer:
         df = df[df['listed_in'].notnull()]
 
     def sub3(self, df):
+        logger.info("****************************** S3: Uncovering Patterns with Unsupervised Learning ******************************")
+
         import matplotlib as mpl
         # ———————————————
         # Increase all font sizes globally
@@ -680,3 +684,5 @@ class Analyzer:
         
         ''' Visualizations of Genres by Country '''
         self.genres_by_country_visualizations(df)
+
+        logger.info("sub2 analysis complete")
