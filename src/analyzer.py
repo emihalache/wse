@@ -5,11 +5,9 @@ import logging
 import os
 from adjustText import adjust_text
 from scipy.stats import f_oneway
-
-
-
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
+import seaborn as sns
 
 from distinctipy import distinctipy
 
@@ -423,3 +421,380 @@ class Analyzer:
         best_k = Ks[silhouettes.index(max(silhouettes))]
         logger.info(f"Best k for {tag}: {best_k}")
         return best_k
+    def country_preprocessing(self, df):
+        # pd.set_option("display.max_columns", None)
+        # pd.set_option("display.max_rows", None)
+
+        # print(df['country'].unique())
+        # Remove rows where country is "Not Given"
+        df = df[df['country'] != 'Not Given']
+
+        # The dataset covers 85 countries
+        print("Dataset before cleaning countries: ", df['country'].unique().shape)
+        
+        country_counts = df['country'].value_counts()
+        # pd.set_option("display.max_rows", None)
+        # print(country_counts)
+
+        # adjust here the threshold that defines a significant number of entries
+        # per country to be suitable for analysis
+        min_entries = 50
+        df_signif_count = country_counts[country_counts >= min_entries].index.tolist()
+        df = df[df['country'].isin(df_signif_count)]
+
+        # We will analyse 24 countries
+        print("Dataset after cleaning countries: ", df['country'].unique().shape)
+        # print(df['country'].unique())
+
+        return df
+    
+
+    def map_genre_categories(self, df):
+        # Explode genres since the listen_in column contains genres separated by commas
+        df_genre = df.copy()
+        df_genre['Genre'] = df_genre['listed_in'].str.split(', ')
+        df_genre = df_genre.explode('Genre')
+
+        # Remove entries where the genre is just 'Movies'
+        df_genre = df_genre[df_genre['Genre'] != 'Movies']
+
+        # Mapping genres to their broader categories,
+        # according to Netflix codes https://www.netflix-codes.com/
+        group_genres = {     
+            'Action & Adventure': 'Action & adventure',
+
+            'Anime Features': 'Anime',
+            'Anime Series': 'Anime',
+
+            'Children & Family Movies': 'Children & family movies',
+
+            'Classic Movies': 'Classic Movies',
+
+            'Comedies': 'Comedies',
+            'Stand-Up Comedy': 'Comedies',
+            'Stand-Up Comedy & Talk Shows': 'Comedies',
+
+            'Documentaries': 'Documentaries',
+            'Docuseries': 'Documentaries',
+
+            'Dramas': 'Dramas',
+
+            'International Movies': 'Foreign movies',
+
+            'Horror Movies': 'Horror movies',
+
+            'Independent Movies': 'Independent movies',
+
+            'LGBTQ Movies': 'LGBTQ+',
+
+            'Music & Musicals': 'Music',
+
+            'Romantic Movies': 'Romantic movies',
+
+            'Sci-Fi & Fantasy': 'Sci - Fi & Fantasy',
+
+            'Sports Movies': 'Sports movies',
+            
+            'Crime TV Shows': 'TV Show',
+            'TV Action & Adventure': 'TV Show',
+            'TV Dramas': 'TV Show',
+            'TV Horror': 'TV Show',
+            'TV Mysteries': 'TV Show',
+            'British TV Shows': 'TV Show',
+            'Reality TV': 'TV Show',
+            'Kids\' TV': 'TV Show',
+            'TV Comedies': 'TV Show',
+            'Korean TV Shows': 'TV Show',
+            'Science & Nature TV': 'TV Show',
+            'TV Shows': 'TV Show',
+            'International TV Shows': 'TV Show',
+            'Spanish-Language TV Shows': 'TV Show',
+            'TV Thrillers': 'TV Show',
+            'Romantic TV Shows': 'TV Show',
+            'TV Sci-Fi & Fantasy': 'TV Show',
+            'Classic & Cult TV': 'TV Show',
+            
+            'Thrillers': 'Thrillers',
+
+            'Teen TV Shows': 'Teen TV shows',
+
+            'Faith & Spirituality': 'Others',
+            'Cult Movies': 'Others',
+        }
+
+        df_genre['genre_group'] = df_genre['Genre'].map(group_genres).fillna('Others')
+
+        return df_genre
+
+    def genre_preprocessing(self, df):
+        # Explode genres since the listen_in column contains genres separated by commas
+        df['Genre'] = df['listed_in'].str.split(', ')
+        df = df.explode('Genre')
+        df['Genre'] = df['Genre'].str.strip()  # Remove leading/trailing whitespace
+
+        print("Dataset before cleaning genres: ", df['Genre'].unique().shape)
+        # The dataset covers 42 genres
+
+        # Map genres to broader categories
+        df = self.map_genre_categories(df)
+        # print(df['genre_group'].value_counts())
+
+        # But we can still see the distribution within the broad category TV Shows
+        # print(df[df['genre_group'] == 'TV Show']['Genre'].value_counts())
+
+        print("Dataset after cleaning genres: ", df['genre_group'].unique().shape)
+
+        return df
+    
+
+    def map_rating_to_age_appropriateness(self, df):
+        # Mapping maturity ratings to their broader categories, because:
+        # - Some categories only differ by terminology used in movies vs TV shows
+        # - Our analysis is focused on the age appropriateness of content, not the reasons why 
+        # a system is rated a certain way (e.g. including violence, language, etc.)
+        group_maturity_ratings = {
+            # Intended or restricted to mature audiences and not suitable for children under 17
+            'TV-MA': 'Adult (17+)',
+            'R': 'Adult (17+)',
+            'NC-17': 'Adult (17+)',
+            
+            # Some material may be inappropriate for children under 13 or 14 years old, so parents 
+            # are strongly urged to be cautious of the content
+            'TV-14': 'Teens (PG Strongly Cautioned)',
+            'PG-13': 'Teens (PG Strongly Cautioned)',
+            
+            # Some material may not be suitable for young children, so parental guidance is suggested.
+            'TV-PG': 'Young Children (PG Suggested)',
+            'PG': 'Young Children (PG Suggested)',
+            
+            # The content is intended for older children (age 7 and above)
+            'TV-Y7': 'Older Children (7+)',
+            'TV-Y7-FV': 'Older Children (7+)',
+            
+            # The content is designed to be appropriate for children of all ages
+            'TV-Y': 'Young Children',
+            
+            # The content is suitable for all ages (general audience), including young children
+            'TV-G': 'All Ages',
+            'G': 'All Ages',
+            
+            # The content has not been assigned a specific rating, thus viewers should use their discretion
+            'NR': 'Not Rated',
+            'UR': 'Not Rated'
+        }
+
+        df['age_appropriateness'] = df['rating'].map(group_maturity_ratings).fillna('Other')
+
+        return df  
+    
+    def rating_preprocessing(self, df):
+        print("Dataset before cleaning maturity ratings: ", df['rating'].unique().shape)
+        
+        df = self.map_rating_to_age_appropriateness(df)
+
+        print("Dataset after cleaning maturity ratings: ", df['age_appropriateness'].unique().shape)
+
+        return df
+    
+
+    def type_by_country_visualizations(self, df):
+        # Grouping releases by country and content type
+        releases_by_country = df.groupby(['country', 'type']).size().unstack(fill_value=0)
+
+        # Order by the number of releases
+        ordered_index = releases_by_country.sum(axis=1).sort_values(ascending=False).index
+
+        # -----------------------------
+        # Plot 1: Quantity of releases per country with content type shown
+        # -----------------------------
+        type_by_country = releases_by_country.loc[ordered_index]
+
+        type_by_country.plot(kind='bar', stacked=True, figsize=(10, 5), colormap='tab20')
+        plt.title("Releases by Country")
+        plt.xlabel("Country", fontsize=12)
+        plt.ylabel("Number of Releases", fontsize=12)
+        plt.legend(title='Content Type')
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_1_releases_by_country.png")
+        plt.clf()  # Clear figure for next plot
+
+        # -----------------------------
+        # Plot 2: Proportions of type of content released per country
+        # -----------------------------
+
+        # Normalize each row to get proportions
+        normalized = releases_by_country.div(releases_by_country.sum(axis=1), axis=0)
+
+        # Order countries by proportion of Movies descending
+        type_proportions_by_country = normalized.sort_values(by='Movie', ascending=False)
+
+        # Plot normalized stacked bar chart with this order
+        type_proportions_by_country.plot(kind='bar', stacked=True, figsize=(10, 5), colormap='tab20')
+        plt.title("Proportion of Content Type by Country")
+        plt.xlabel("Country", fontsize=12)
+        plt.ylabel("Percentage", fontsize=12)
+        plt.legend(title='Content Type', bbox_to_anchor=(1, 1), loc='upper left')
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_2_types_by_country.png")
+        plt.clf()  # Clear figure for next plot
+
+
+    def ratings_by_country_visualizations(self, df):
+        # -----------------------------
+        # Plot 3: Maturity Rating Proportions by Country
+        # -----------------------------
+
+        # Grouping releases by country and content type
+        rating_by_country = df.groupby(['country', 'rating']).size().unstack(fill_value=0)
+
+        # Normalize to get proportions of maturity ratings per country
+        normalized = rating_by_country.div(rating_by_country.sum(axis=1), axis=0)
+
+        # Order by the number of releases
+        ordered_index = normalized.loc[rating_by_country.sum(axis=1).sort_values(ascending=False).index]
+
+        # Order rating categories by average size across all countries for better visualization
+        # So generally the smallest one is at the bottom, and largest is at the top
+        rating_proportions_by_country = ordered_index[ordered_index.mean().sort_values(ascending=True).index]
+
+        rating_proportions_by_country.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
+        plt.title("Proportion of Maturity Ratings by Country")
+        plt.xlabel("Country", fontsize=12)
+        plt.ylabel("Percentage", fontsize=12)
+        plt.legend(title='Maturity Rating', bbox_to_anchor=(1, 1), loc='upper left')
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_3_normalized_ratings_by_country.png")
+        plt.clf() # Clear figure for next plot
+
+
+        # -----------------------------
+        # Plot 4: Proportions of Age Appropriateness Content by Country
+        # -----------------------------
+
+        # Grouping releases by country and content type
+        grouped_rating_by_country = df.groupby(['country', 'age_appropriateness']).size().unstack(fill_value=0)
+
+        # Normalize to get proportions of age appropriateness per country
+        normalized = grouped_rating_by_country.div(grouped_rating_by_country.sum(axis=1), axis=0)
+
+        key_group = 'Adult (17+)'
+        ordered_index = normalized.sort_values(by=key_group, ascending=False)
+
+        # Order by sesired column stacking order: from least appropriate to most
+        desired_order = [
+            'Not Rated',
+            'Young Children (PG Suggested)',
+            'Young Children',
+            'Older Children (7+)',
+            'Teens (PG Strongly Cautioned)',
+            'Adult (17+)',
+            'All Ages'
+        ]
+        grouped_rating_proportions_by_country = ordered_index[desired_order]
+
+        grouped_rating_proportions_by_country.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
+        plt.title("Proportion of Age Appropriateness by Country")
+        plt.xlabel("Country", fontsize=12)
+        plt.ylabel("Percentage", fontsize=12)
+        plt.legend(title='Age Appropriateness', bbox_to_anchor=(1, 1), loc='upper left')
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_4_normalized_grouped_ratings_by_country.png")
+        plt.clf() # Clear figure for next plot
+
+
+
+    def genres_by_country_visualizations(self, df):
+        # -----------------------------
+        # Plot 5: Genre by Country Heatmap
+        # -----------------------------
+
+        # Grouping releases by country and genre
+        genre_by_country = df.groupby(['country', 'Genre']).size().unstack(fill_value=0)
+
+        # Order by the number of releases
+        ordered_index = genre_by_country.sum(axis=1).sort_values(ascending=False).index
+
+        genre_by_country = genre_by_country.loc[ordered_index]
+
+        plt.figure(figsize=(14, 8))
+        sns.heatmap(genre_by_country, annot=False, cmap='viridis', cbar_kws={'pad': 0.01})
+        plt.title("Genres by Country")
+        plt.xlabel("Genre", fontsize=12)
+        plt.ylabel("Country", fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_5_genres_by_country.png")
+        plt.clf() # Clear figure for next plot
+        
+        # -----------------------------
+        # Plot 6: Genre Groups by Country Heatmap
+        # -----------------------------
+
+        # Grouping releases by country and genre group
+        genre_group_by_country = df.groupby(['country', 'genre_group']).size().unstack(fill_value=0)
+
+        # Order by the number of releases
+        ordered_index = genre_group_by_country.sum(axis=1).sort_values(ascending=False).index
+
+        genre_group_by_country = genre_group_by_country.loc[ordered_index]
+
+        plt.figure(figsize=(14, 8))
+        sns.heatmap(genre_group_by_country, annot=False, cmap='viridis', cbar_kws={'pad': 0.01})
+        plt.title("Genre Groups by Country")
+        plt.xlabel("Genre Group", fontsize=12)
+        plt.ylabel("Country", fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_6_genre_groups_by_country.png")
+        plt.clf() # Clear figure for next plot
+
+        # -----------------------------
+        # Plot 7: TV Show Sub-Genre by Country Heatmap
+        # -----------------------------
+
+        # Filter for TV Shows
+        df_tv_show = df[df['genre_group'] == 'TV Show']
+        # Count (Genre, Country) pairs
+        tv_show_subgenre_by_country = pd.crosstab(df_tv_show['country'], df_tv_show['Genre'])
+        
+        plt.figure(figsize=(14, 8))
+        sns.heatmap(tv_show_subgenre_by_country, annot=False, cmap='viridis', cbar_kws={'pad': 0.01})
+        plt.title('TV Show Sub-genres by Country')
+        plt.xlabel('TV Show Sub-Genre', fontsize=12)
+        plt.ylabel('Country', fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_7_tv_show_subgenres_by_country.png")
+        plt.clf() # Clear figure for next plot
+        
+
+    def sub2(self, df):
+        print("****************************** S2: Regional Variations in Content Characteristics ******************************")
+
+        # Ensure results directory exists
+        os.makedirs("results", exist_ok=True)
+
+        ''' Data Cleaning and Preparation '''
+        df = self.country_preprocessing(df)
+        df = self.genre_preprocessing(df)
+        df = self.rating_preprocessing(df)
+
+        ''' Visualizations of Content Type by Country '''
+        self.type_by_country_visualizations(df)
+
+        ''' Visualizations of Maturity Ratings by Country '''
+        self.ratings_by_country_visualizations(df)
+        
+        ''' Visualizations of Genres by Country '''
+        self.genres_by_country_visualizations(df)
