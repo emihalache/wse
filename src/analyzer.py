@@ -72,15 +72,15 @@ class Analyzer:
         # -----------------------------
         # Plot 2: Movies per genre per year
         # -----------------------------
-        if 'listed_in' not in df.columns:
-            print("listed_in column not found.")
+        if 'genre_group' not in df.columns:
+            print("genre_group column not found.")
             return
         
         # Split the 'listed_in' column by comma and explode
-        df['Genre'] = df['listed_in'].str.split(', ')
-        df_exploded = df.explode('Genre')
+        # df['Genre'] = df['listed_in'].str.split(', ')
+        # df_exploded = df.explode('Genre')
 
-        genre_counts = df_exploded.groupby(['Year', 'Genre']).size().unstack(fill_value=0)
+        genre_counts = df.groupby(['Year', 'genre_group']).size().unstack(fill_value=0)
         # Generate visually distinct colors
         distinct_colors = distinctipy.get_colors(genre_counts.shape[1])
 
@@ -129,11 +129,11 @@ class Analyzer:
         # -----------------------------
         # Plot 4: Movies/Series per rating per year
         # -----------------------------
-        if 'rating' not in df.columns:
+        if 'age_appropriateness' not in df.columns:
             print("rating column not found.")
             return
         # Group by Year and Rating
-        rating_counts = df.groupby(['Year', 'rating']).size().unstack(fill_value=0)
+        rating_counts = df.groupby(['Year', 'age_appropriateness']).size().unstack(fill_value=0)
 
         # Generate visually distinct colors
         distinct_colors_type = distinctipy.get_colors(rating_counts.shape[1])
