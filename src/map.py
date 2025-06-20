@@ -2,9 +2,31 @@ import geopandas as gpd
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import matplotlib as mpl
+import json
+from matplotlib.colors import ListedColormap
+
+# ———————————————
+# Increase all font sizes globally
+mpl.rcParams.update({
+    'font.size': 14,  # default text size
+    'axes.titlesize': 16,  # axes title
+    'axes.labelsize': 14,  # x/y labels
+    'xtick.labelsize': 12,  # x tick labels
+    'ytick.labelsize': 12,  # y tick labels
+    'legend.fontsize': 12,  # legend text
+    'legend.title_fontsize': 12,  # legend title
+    'figure.titlesize': 18,  # figure suptitle, if any
+})
+
+with open("../results/s3/cluster_palette.json") as f:
+    cluster_hex = json.load(f)
+
+cmap = ListedColormap(cluster_hex)
 
 # after loading
-clusters = pd.read_excel("../results/regional_clusters.xlsx")
+clusters = pd.read_excel("../results/s3/regional_clusters.xlsx")
+clusters["cluster"] = clusters["cluster"].round().astype(pd.Int64Dtype())
 clusters["country_clean"] = clusters["country"].str.strip()
 
 world = gpd.read_file("https://datahub.io/core/geo-countries/r/countries.geojson")
@@ -42,10 +64,11 @@ map_df = world.merge(
     left_on="name",
     right_on="country_clean"
 )
-
-fig, ax = plt.subplots(1, 1, figsize=(14, 8))
+map_df["cluster"] = map_df["cluster"].astype(pd.Int64Dtype())
+fig, ax = plt.subplots(1,1, figsize=(14,8))
 map_df.plot(
     column="cluster",
+    cmap=cmap,
     categorical=True,
     legend=True,
     legend_kwds={"title": "Cluster"},
@@ -58,4 +81,4 @@ map_df.plot(
 ax.set_axis_off()
 ax.set_title("Netflix Genre-Profile Clusters by Country")
 plt.tight_layout()
-plt.savefig("../results/country_cluster_map.png")
+plt.savefig("../results/s3/country_cluster_map.png")

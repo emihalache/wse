@@ -5,6 +5,10 @@ import logging
 import os
 from adjustText import adjust_text
 from scipy.stats import f_oneway
+import json
+
+from distinctipy import get_colors
+from matplotlib.colors import ListedColormap
 
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
@@ -12,7 +16,7 @@ import seaborn as sns
 
 from distinctipy import distinctipy
 
-#region logging stuff
+# region logging stuff
 # Set up logging to file and console
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -34,7 +38,9 @@ console_handler.setFormatter(formatter)
 if not logger.hasHandlers():
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-#endregion
+
+
+# endregion
 
 class Analyzer:
     def __init__(self):
@@ -46,7 +52,7 @@ class Analyzer:
         if 'release_year' not in df.columns:
             print("release_year column not found.")
             return
-        
+
         # Convert release_year to datetime
         df['Date_N'] = pd.to_datetime(df['release_year'].astype(int).astype(str) + '-01-01')
         df['Year'] = df['Date_N'].dt.year
@@ -68,14 +74,13 @@ class Analyzer:
         releases_df.columns = ['Year', 'Count']
         releases_df.to_excel("results/releases_by_year.xlsx", index=False)
 
-
         # -----------------------------
         # Plot 2: Movies per genre per year
         # -----------------------------
         if 'genre_group' not in df.columns:
             print("genre_group column not found.")
             return
-        
+
         # Split the 'listed_in' column by comma and explode
         # df['Genre'] = df['listed_in'].str.split(', ')
         # df_exploded = df.explode('Genre')
@@ -91,7 +96,6 @@ class Analyzer:
         for i, (genre, color) in enumerate(zip(genre_counts.columns, distinct_colors)):
             linestyle = linestyles[i % len(linestyles)]
             plt.plot(genre_counts.index, genre_counts[genre], label=genre, color=color, linestyle=linestyle)
-
 
         plt.title("Number of Movies per Genre per Year")
         plt.xlabel("Year")
@@ -156,7 +160,6 @@ class Analyzer:
         # Save to Excel
         rating_counts.to_excel("results/ratings_per_year.xlsx")
 
-    def sub1_evaluation(self):
         # -----------------------------
         # Load Files
         # -----------------------------
@@ -218,8 +221,6 @@ class Analyzer:
         top_rating_per_year = rating_counts.idxmax(axis=1)
         top_rating_per_year.to_frame(name='Top_Rating').to_excel("results/evaluation/top_rating_per_year.xlsx")
 
-        logger.info("Evaluation complete. See files in 'results/evaluation/' folder.")
-
     def genre(self, df):
         if 'listed_in' not in df.columns:
             print("listed_in column not found.")
@@ -229,7 +230,42 @@ class Analyzer:
         df = df[df['listed_in'].notnull()]
 
     def sub3(self, df):
+        import matplotlib as mpl
+        # ———————————————
+        # Increase all font sizes globally
+        mpl.rcParams.update({
+            'font.size': 14,  # default text size
+            'axes.titlesize': 16,  # axes title
+            'axes.labelsize': 14,  # x/y labels
+            'xtick.labelsize': 12,  # x tick labels
+            'ytick.labelsize': 12,  # y tick labels
+            'legend.fontsize': 12,  # legend text
+            'legend.title_fontsize': 12,  # legend title
+            'figure.titlesize': 18,  # figure suptitle, if any
+        })
+
+        LABEL_FONT = 13
+
+        os.makedirs("results/s3", exist_ok=True)
         logger.info("Starting sub3 unsupervised analysis")
+
+        # Replace historical country names
+        df['country'] = df['country'].str.strip().replace({
+            'West Germany': 'Germany',
+            'Soviet Union': 'Russia'
+        })
+
+        output_path = "results/s3/sub3_output.txt"
+        output_file = open(output_path, "w")
+
+        logger.info(f"Dataset shape: {df.shape}")
+        df = df[
+            ~df['country']
+            .str.strip()  # remove leading/trailing spaces
+            .str.lower()  # lowercase everything
+            .eq('not given')  # compare to the string
+        ]
+        logger.info(f"Shape after country filtering: {df.shape}")
 
         tmp = df[['release_year', 'listed_in']].dropna()
         tmp['genre_list'] = tmp['listed_in'].str.split(r',\s*')
@@ -258,7 +294,7 @@ class Analyzer:
             x, y = year_coords[idx]
             texts.append(
                 plt.text(x, y, str(int(yr)),
-                         fontsize=8, alpha=0.75)
+                         fontsize=LABEL_FONT, alpha=0.75)
             )
 
         adjust_text(
@@ -274,21 +310,22 @@ class Analyzer:
         plt.title("Temporal Clusters of Years by Genre Distribution")
         plt.legend()
         plt.tight_layout()
-        plt.savefig("results/sub3_temporal_clusters.png")
+        plt.savefig("results/s3/sub3_temporal_clusters.png")
         plt.close()
 
         pd.DataFrame({
             'year': year_genre_norm.index,
             'cluster': year_labels
-        }).to_excel("results/temporal_clusters.xlsx", index=False)
+        }).to_excel("results/s3/temporal_clusters.xlsx", index=False)
 
-        # --- ANOVA on each genre across year‐clusters ---
-        print("\n=== ANOVA: Temporal clusters ===")
+        # write ANOVA results for temporal clusters
+        print("\n=== ANOVA: Temporal clusters ===", file=output_file)
+
         for genre in year_genre_norm.columns:
             groups = [year_genre_norm[year_labels == c][genre] for c in np.unique(year_labels)]
             stat, p = f_oneway(*groups)
             if p < 0.01:
-                print(f"{genre:20s} p={p:.2e}")
+                print(f"{genre:20s} p={p:.2e}", file=output_file)
 
         year_centroids = (
             year_genre_norm
@@ -296,11 +333,11 @@ class Analyzer:
             .groupby('cluster')
             .mean()
         )
-        # Print top 5 genres per cluster
+
         for c, row in year_centroids.iterrows():
             top5 = row.sort_values(ascending=False).head(5)
-            print(f"Temporal Cluster {c} top genres:")
-            print(top5.to_string(), "\n")
+            print(f"\nTemporal Cluster {c} top genres:", file=output_file)
+            print(top5.to_string(), file=output_file)
 
         # Plot centroid bar chart
         plt.figure(figsize=(10, 6))
@@ -308,7 +345,7 @@ class Analyzer:
         plt.ylabel("Avg. Proportion")
         plt.title("Genre Profiles of Temporal Clusters")
         plt.tight_layout()
-        plt.savefig("results/temporal_cluster_profiles.png")
+        plt.savefig("results/s3/temporal_cluster_profiles.png")
         plt.close()
 
         if 'country' in df.columns:
@@ -321,7 +358,8 @@ class Analyzer:
 
             # choose best k for countries
             best_k_countries = self._choose_k(country_genre_norm, k_min=2, k_max=15, tag="countries")
-            best_k_countries = 5
+            best_k_countries = 4
+
 
             pca2 = PCA(n_components=2, random_state=0)
             country_coords = pca2.fit_transform(country_genre_norm)
@@ -329,17 +367,29 @@ class Analyzer:
             country_labels = kmeans_c.labels_
 
             plt.figure(figsize=(12, 10))
-            colors2 = distinctipy.get_colors(best_k_countries)
+            cluster_colors = distinctipy.get_colors(best_k_countries)
+            # convert to hex strings so matplotlib can consume them
+            cluster_hex = [distinctipy.get_hex(c) for c in cluster_colors]
+            cmap = ListedColormap(cluster_hex)
+
+            plt.figure(figsize=(12, 10))
             for c in range(best_k_countries):
                 mask = (country_labels == c)
-                plt.scatter(country_coords[mask, 0], country_coords[mask, 1],
-                            color=colors2[c], label=f'Cluster {c}')
+                plt.scatter(
+                    country_coords[mask, 0],
+                    country_coords[mask, 1],
+                    color=cluster_hex[c],
+                    label=f"Cluster {c}"
+                )
+
+            with open("results/s3/cluster_palette.json", "w") as f:
+                json.dump(cluster_hex, f)
 
             texts = []
             for idx, country in enumerate(country_genre_norm.index):
                 x, y = country_coords[idx]
                 texts.append(
-                    plt.text(x, y, country, fontsize=7, alpha=0.8)
+                    plt.text(x, y, country, fontsize=LABEL_FONT, alpha=0.8)
                 )
 
             adjust_text(
@@ -355,22 +405,21 @@ class Analyzer:
             plt.title("Regional Clusters of Countries by Genre Distribution")
             plt.legend()
             plt.tight_layout()
-            plt.savefig("results/sub3_regional_clusters.png")
+            plt.savefig("results/s3/sub3_regional_clusters.png")
             plt.close()
 
             pd.DataFrame({
                 'country': country_genre_norm.index,
                 'cluster': country_labels
-            }).to_excel("results/regional_clusters.xlsx", index=False)
+            }).to_excel("results/s3/regional_clusters.xlsx", index=False)
 
             # ANOVA for countries
-            print("\n=== ANOVA: Regional clusters ===")
+            print("\n=== ANOVA: Regional clusters ===", file=output_file)
             for genre in country_genre_norm.columns:
-                groups = [country_genre_norm[country_labels==c][genre] for c in np.unique(country_labels)]
-                stat,p = f_oneway(*groups)
+                groups = [country_genre_norm[country_labels == c][genre] for c in np.unique(country_labels)]
+                stat, p = f_oneway(*groups)
                 if p < 0.01:
-                    print(f"{genre:20s} p={p:.2e}")
-
+                    print(f"{genre:20s} p={p:.2e}", file=output_file)
 
             # Profile regional clusters
             country_centroids = (
@@ -381,8 +430,8 @@ class Analyzer:
             )
             for c, row in country_centroids.iterrows():
                 top5 = row.sort_values(ascending=False).head(5)
-                print(f"Regional Cluster {c} top genres:")
-                print(top5.to_string(), "\n")
+                print(f"\nRegional Cluster {c} top genres:", file=output_file)
+                print(top5.to_string(), file=output_file)
 
             # Plot centroid bar chart
             plt.figure(figsize=(12, 6))
@@ -390,15 +439,13 @@ class Analyzer:
             plt.ylabel("Avg. Proportion")
             plt.title("Genre Profiles of Regional Clusters")
             plt.tight_layout()
-            plt.savefig("results/regional_cluster_profiles.png")
+            plt.savefig("results/s3/regional_cluster_profiles.png")
             plt.close()
-
-
         else:
             logger.warning("No country column—skipping regional analysis")
 
+        output_file.close()
         logger.info("sub3 analysis complete")
-
 
     @staticmethod
     def _choose_k(X, k_min=2, k_max=10, tag=""):
@@ -419,23 +466,23 @@ class Analyzer:
             silhouettes.append(silhouette_score(X, km.labels_))
 
         # elbow
-        plt.figure(figsize=(6,4))
+        plt.figure(figsize=(6, 4))
         plt.plot(Ks, inertias, marker='o')
         plt.title(f"Elbow Plot ({tag})")
         plt.xlabel("k")
         plt.ylabel("Inertia")
         plt.tight_layout()
-        plt.savefig(f"results/elbow_{tag}.png")
+        plt.savefig(f"results/s3/elbow_{tag}.png")
         plt.close()
 
         # silhouette
-        plt.figure(figsize=(6,4))
+        plt.figure(figsize=(6, 4))
         plt.plot(Ks, silhouettes, marker='o')
         plt.title(f"Silhouette Scores ({tag})")
         plt.xlabel("k")
         plt.ylabel("Silhouette Score")
         plt.tight_layout()
-        plt.savefig(f"results/silhouette_{tag}.png")
+        plt.savefig(f"results/s3/silhouette_{tag}.png")
         plt.close()
 
         # pick best by silhouette

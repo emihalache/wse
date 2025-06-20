@@ -1,0 +1,90 @@
+
+=== ANOVA: Temporal clusters ===
+Anime Series         p=1.88e-03
+Classic Movies       p=1.80e-25
+Comedies             p=6.26e-05
+Documentaries        p=7.08e-37
+Docuseries           p=3.72e-03
+Dramas               p=2.70e-06
+International Movies p=3.10e-05
+Kids' TV             p=4.67e-05
+Romantic TV Shows    p=3.40e-03
+TV Dramas            p=2.02e-03
+TV Shows             p=3.87e-37
+Thrillers            p=3.29e-04
+
+Temporal Cluster 0 top genres:
+genre_list
+Dramas                  0.172943
+International Movies    0.159174
+Comedies                0.118740
+Action & Adventure      0.085755
+Romantic Movies         0.035338
+
+Temporal Cluster 1 top genres:
+genre_list
+Documentaries     0.501984
+Classic Movies    0.418651
+TV Shows          0.079365
+Anime Series      0.000000
+Anime Features    0.000000
+
+Temporal Cluster 2 top genres:
+genre_list
+Classic Movies          0.282226
+Dramas                  0.197729
+International Movies    0.118715
+Action & Adventure      0.113450
+Comedies                0.079057
+
+Temporal Cluster 3 top genres:
+genre_list
+TV Shows                    1.0
+Action & Adventure          0.0
+Anime Series                0.0
+British TV Shows            0.0
+Children & Family Movies    0.0
+
+=== ANOVA: Regional clusters ===
+Comedies             p=2.61e-04
+Crime TV Shows       p=7.68e-07
+Dramas               p=9.52e-18
+International Movies p=3.92e-18
+International TV Shows p=1.69e-19
+Romantic Movies      p=9.40e-04
+Romantic TV Shows    p=2.05e-03
+TV Action & Adventure p=9.44e-03
+TV Comedies          p=1.49e-03
+TV Dramas            p=1.17e-09
+
+Regional Cluster 0 top genres:
+genre_list
+Dramas                  0.435859
+International Movies    0.343266
+Independent Movies      0.079798
+Action & Adventure      0.044444
+Sports Movies           0.027778
+
+Regional Cluster 1 top genres:
+genre_list
+International TV Shows    0.242669
+TV Dramas                 0.149971
+Crime TV Shows            0.110845
+TV Comedies               0.084176
+Kids' TV                  0.067097
+
+Regional Cluster 2 top genres:
+genre_list
+International Movies    0.336044
+Dramas                  0.149524
+Comedies                0.113807
+Documentaries           0.068638
+Action & Adventure      0.061850
+
+Regional Cluster 3 top genres:
+genre_list
+International Movies      0.175462
+Dramas                    0.120972
+International TV Shows    0.101793
+Comedies                  0.073045
+TV Dramas                 0.071653
