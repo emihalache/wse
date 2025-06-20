@@ -673,7 +673,6 @@ class Analyzer:
         plt.savefig("results/s2_7_tv_show_subgenres_by_country.png")
         plt.clf() # Clear figure for next plot
         
-
     def sub2(self, df):
         logger.info("****************************** S2: Regional Variations in Content Characteristics ******************************")
 
