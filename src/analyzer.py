@@ -676,6 +676,7 @@ class Analyzer:
 
     def sub2(self, df):
         logger.info("****************************** S2: Regional Variations in Content Characteristics ******************************")
+
         ''' Visualizations of Content Type by Country '''
         self.type_by_country_visualizations(df)
 
@@ -685,4 +686,4 @@ class Analyzer:
         ''' Visualizations of Genres by Country '''
         self.genres_by_country_visualizations(df)
 
-        logger.info("sub2 analysis complete")
+        logger.info("Completed Sub2 Country Analysis")
