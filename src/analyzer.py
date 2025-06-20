@@ -6,8 +6,6 @@ import os
 from adjustText import adjust_text
 from scipy.stats import f_oneway
 
-
-
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
@@ -138,8 +136,8 @@ class Analyzer:
         distinct_colors_type = distinctipy.get_colors(rating_counts.shape[1])
 
         rating_counts.plot(
-            kind='line',
-            stacked=False,
+            kind='bar',
+            stacked=True,
             figsize=(20, 10),
             color=distinct_colors_type,
         )
@@ -155,50 +153,71 @@ class Analyzer:
         # Save to Excel
         rating_counts.to_excel("results/ratings_per_year.xlsx")
 
-        
+    def sub1_evaluation(self):
+        os.makedirs("results/evaluation", exist_ok=True)
+
         # -----------------------------
-        # Plot 5: Top 10 Directors per Year
+        # Load Files
         # -----------------------------
-        # if 'director' not in df.columns:
-        #     logger.warning("'director' column not found.")
-        #     return
+        releases_df = pd.read_excel("results/releases_by_year.xlsx")
+        genre_counts = pd.read_excel("results/movies_per_genre_per_year.xlsx", index_col=0)
+        type_counts = pd.read_excel("results/types_per_year.xlsx", index_col=0)
+        rating_counts = pd.read_excel("results/ratings_per_year.xlsx", index_col=0)
 
-        # # Clean up
-        # df['Director'] = df['director'].str.strip()
+        # -----------------------------
+        # 1. YoY % Change – Total Releases
+        # -----------------------------
+        releases_df['YoY_%_Change'] = releases_df['Count'].pct_change() * 100
+        releases_df['Cumulative_Count'] = releases_df['Count'].cumsum()
+        releases_df.to_excel("results/evaluation/releases_yoy_evaluation.xlsx", index=False)
 
-        # # Count appearances per director per year
-        # director_counts = df.groupby(['Year', 'Director']).size().reset_index(name='Count')
+        # -----------------------------
+        # 2. YoY % Change – Genre
+        # -----------------------------
+        genre_yoy = genre_counts.pct_change() * 100
+        genre_yoy.to_excel("results/evaluation/genre_yoy_pct_change.xlsx")
 
-        # # Get top 10 directors per year
-        # top10_per_year = director_counts.groupby('Year').apply(
-        #     lambda g: g.nlargest(10, 'Count')
-        # ).reset_index(drop=True)
+        # -----------------------------
+        # 3. Genre Share Evolution
+        # -----------------------------
+        genre_share = genre_counts.div(genre_counts.sum(axis=1), axis=0) * 100
+        genre_share.to_excel("results/evaluation/genre_share_percent_by_year.xlsx")
 
-        # # Pivot to wide format for plotting
-        # pivot_df = top10_per_year.pivot(index='Year', columns='Director', values='Count').fillna(0)
+        # Plot
+        genre_share.plot.area(figsize=(20, 10), colormap='tab20')
+        plt.title("Genre Share Evolution Over Time (%)")
+        plt.xlabel("Year")
+        plt.ylabel("Genre Share (%)")
+        plt.legend(title='Genre', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/evaluation/genre_share_evolution.png")
+        plt.clf()
 
-        # # Generate distinct colors
-        # distinct_colors_directors = distinctipy.get_colors(pivot_df.shape[1])
+        # -----------------------------
+        # 4. Top Genre per Year
+        # -----------------------------
+        top_genre_per_year = genre_counts.idxmax(axis=1)
+        top_genre_per_year.to_frame(name='Top_Genre').to_excel("results/evaluation/top_genre_per_year.xlsx")
 
-        # # Plot
-        # pivot_df.plot(
-        #     kind='bar',
-        #     stacked=True,
-        #     figsize=(20, 10),
-        #     color=distinct_colors_directors,
-        # )
+        # -----------------------------
+        # 5. Type YoY % Change
+        # -----------------------------
+        type_yoy = type_counts.pct_change() * 100
+        type_yoy.to_excel("results/evaluation/types_yoy_pct_change.xlsx")
 
-        # plt.title("Top 10 Directors per Year")
-        # plt.xlabel("Year")
-        # plt.ylabel("Number of Movies/Shows")
-        # plt.legend(title="Director", bbox_to_anchor=(1.05, 1), loc='upper left')
-        # plt.tight_layout()
-        # plt.savefig("results/top10_directors_per_year.png")
-        # plt.clf()
+        # -----------------------------
+        # 6. Rating YoY % Change
+        # -----------------------------
+        rating_yoy = rating_counts.pct_change() * 100
+        rating_yoy.to_excel("results/evaluation/ratings_yoy_pct_change.xlsx")
 
-        # # Save to Excel
-        # pivot_df.to_excel("results/top10_directors_per_year.xlsx")
+        # -----------------------------
+        # 7. Top Rating per Year
+        # -----------------------------
+        top_rating_per_year = rating_counts.idxmax(axis=1)
+        top_rating_per_year.to_frame(name='Top_Rating').to_excel("results/evaluation/top_rating_per_year.xlsx")
 
+        logger.info("Evaluation complete. See files in 'results/evaluation/' folder.")
 
     def genre(self, df):
         if 'listed_in' not in df.columns:
