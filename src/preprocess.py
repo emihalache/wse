@@ -65,14 +65,6 @@ class Preprocessor:
         return df
     
     def genre_preprocessing(self, df):
-        # Explode genres since the listen_in column contains genres separated by commas
-        df['Genre'] = df['listed_in'].str.split(', ')
-        df = df.explode('Genre')
-        df['Genre'] = df['Genre'].str.strip()  # Remove leading/trailing whitespace
-
-        logger.info(f"Dataset before cleaning genres: {df['Genre'].unique().shape}")
-        # The dataset covers 42 genres
-
         # Map genres to broader categories
         df = self.map_genre_categories(df)
         # print(df['genre_group'].value_counts())
@@ -81,15 +73,18 @@ class Preprocessor:
         # print(df[df['genre_group'] == 'TV Show']['Genre'].value_counts())
 
         logger.info(f"Dataset after cleaning genres: {df['genre_group'].unique().shape}" )
+        # We will analyse 19 genres
 
         return df
     
     def rating_preprocessing(self, df):
         logger.info(f"Dataset before cleaning maturity ratings: {df['rating'].unique().shape} ")
+        # The daaset covers 14 maturity ratings
         
         df = self.map_rating_to_age_appropriateness(df)
 
         logger.info(f"Dataset after cleaning maturity ratings: {df['age_appropriateness'].unique().shape}")
+        # We will analyse 7 age appropriateness categories
 
         return df
     
@@ -134,13 +129,17 @@ class Preprocessor:
         return df  
     
     def map_genre_categories(self, df):
+        df = df.copy()
         # Explode genres since the listen_in column contains genres separated by commas
-        df_genre = df.copy()
-        df_genre['Genre'] = df_genre['listed_in'].str.split(', ')
-        df_genre = df_genre.explode('Genre')
+        df['Genre'] = df['listed_in'].str.split(', ')
+        df = df.explode('Genre')
+        df['Genre'] = df['Genre'].str.strip()  # Remove leading/trailing whitespace
+
+        logger.info(f"Dataset before cleaning genres: {df['Genre'].unique().shape}")
+        # The dataset covers 42 genres
 
         # Remove entries where the genre is just 'Movies'
-        df_genre = df_genre[df_genre['Genre'] != 'Movies']
+        df = df[df['Genre'] != 'Movies']
 
         # Mapping genres to their broader categories,
         # according to Netflix codes https://www.netflix-codes.com/
@@ -206,6 +205,6 @@ class Preprocessor:
             'Cult Movies': 'Others',
         }
 
-        df_genre['genre_group'] = df_genre['Genre'].map(group_genres).fillna('Others')
+        df['genre_group'] = df['Genre'].map(group_genres).fillna('Others')
 
-        return df_genre
+        return df
