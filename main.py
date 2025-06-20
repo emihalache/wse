@@ -39,16 +39,19 @@ def main():
     logger.info(f"Shape of df: {df.shape}")
     logger.info(f"\n{df.info()}")
     
-    # Start preprocessing the data
-    new_df = preprocessor.preprocess(df)
+    # Data Cleaning and Preparation 
+    sub3_df = preprocessor.preprocess(df)
+    new_df = preprocessor.country_preprocessing(sub3_df)
+    new_df = preprocessor.genre_preprocessing(new_df)
+    new_df = preprocessor.rating_preprocessing(new_df)
     logger.info(f"New shape of the df: {new_df.shape}")
 
     # Start analysing the data
     analyzer.sub1(new_df)               # This gets the nr. of releases per year
-    analyzer.sub2(new_df) 
-    analyzer.sub3(new_df)
-    # analyzer.sub1(new_df)               # This gets the nr. of releases per year
-    analyzer.sub1_evaluation()  
+    analyzer.sub1_evaluation() 
+    # analyzer.sub2(new_df) 
+    # analyzer.sub3(sub3_df)
+     
     # analyzer.sub3(new_df)
 
 if __name__ == '__main__':
