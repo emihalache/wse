@@ -47,6 +47,9 @@ def main():
     analyzer.sub1(new_df)               # This gets the nr. of releases per year
     analyzer.sub2(new_df) 
     analyzer.sub3(new_df)
+    # analyzer.sub1(new_df)               # This gets the nr. of releases per year
+    analyzer.sub1_evaluation()  
+    # analyzer.sub3(new_df)
 
 if __name__ == '__main__':
     main()
