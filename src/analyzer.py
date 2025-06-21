@@ -630,6 +630,17 @@ class Analyzer:
         plt.savefig("results/s2_5_genres_by_country.png")
         plt.clf() # Clear figure for next plot
         
+        plt.figure(figsize=(20, 10))
+        sns.heatmap(genre_by_country, annot=True, fmt=".0f", cmap='viridis', cbar_kws={'pad': 0.01})
+        plt.title("Genres by Country")
+        plt.xlabel("Genre", fontsize=12)
+        plt.ylabel("Country", fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_5_aux.png")
+        plt.clf() # Clear figure for next plot
+
         # -----------------------------
         # Plot 6: Genre Groups by Country Heatmap
         # -----------------------------
@@ -653,6 +664,17 @@ class Analyzer:
         plt.savefig("results/s2_6_genre_groups_by_country.png")
         plt.clf() # Clear figure for next plot
 
+        plt.figure(figsize=(14, 8))
+        sns.heatmap(genre_group_by_country, annot=True, fmt=".2f", cmap='viridis', cbar_kws={'pad': 0.01})
+        plt.title("Genre Groups by Country")
+        plt.xlabel("Genre Group", fontsize=12)
+        plt.ylabel("Country", fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_6_aux.png")
+        plt.clf() # Clear figure for next plot
+
         # -----------------------------
         # Plot 7: TV Show Sub-Genre by Country Heatmap
         # -----------------------------
@@ -662,6 +684,9 @@ class Analyzer:
         # Count (Genre, Country) pairs
         tv_show_subgenre_by_country = pd.crosstab(df_tv_show['country'], df_tv_show['Genre'])
         
+        ordered_index = [country for country in ordered_index if country in tv_show_subgenre_by_country.index]
+        tv_show_subgenre_by_country = tv_show_subgenre_by_country.loc[ordered_index]
+
         plt.figure(figsize=(14, 8))
         sns.heatmap(tv_show_subgenre_by_country, annot=False, cmap='viridis', cbar_kws={'pad': 0.01})
         plt.title('TV Show Sub-genres by Country')
@@ -671,6 +696,17 @@ class Analyzer:
         plt.yticks(fontsize=12)
         plt.tight_layout()
         plt.savefig("results/s2_7_tv_show_subgenres_by_country.png")
+        plt.clf() # Clear figure for next plot
+
+        plt.figure(figsize=(14, 8))
+        sns.heatmap(tv_show_subgenre_by_country, annot=True, fmt=".2f", cmap='viridis', cbar_kws={'pad': 0.01})
+        plt.title('TV Show Sub-genres by Country')
+        plt.xlabel('TV Show Sub-Genre', fontsize=12)
+        plt.ylabel('Country', fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_7_aux.png")
         plt.clf() # Clear figure for next plot
         
     def sub2(self, df):
