@@ -47,10 +47,9 @@ def main():
     logger.info(f"New shape of the df: {new_df.shape}")
 
     # Start analysing the data
-    analyzer.sub1(new_df)               # This gets the nr. of releases per year
-    #analyzer.sub1_evaluation() 
-    analyzer.sub2(new_df) 
-    analyzer.sub3(sub3_df)
+    analyzer.sub1(new_df)                
+    # analyzer.sub2(new_df) 
+    # analyzer.sub3(sub3_df)
 
 if __name__ == '__main__':
     main()

@@ -47,6 +47,8 @@ class Analyzer:
         # Ensure results directory exists
         os.makedirs("results", exist_ok=True)
         os.makedirs("results/evaluation", exist_ok=True)
+        os.makedirs("results/s1", exist_ok=True)
+        os.makedirs("results/s3", exist_ok=True)
         
     def sub1(self, df):
         logger.info("****************************** S1: Temporal Trends in Global Content *******************************************")
@@ -68,13 +70,13 @@ class Analyzer:
         plt.xlabel("Year")
         plt.ylabel("Number of Shows")
         plt.tight_layout()
-        plt.savefig("results/releases_by_year.png")
+        plt.savefig("results/s1/releases_by_year.png")
         plt.clf()  # Clear figure for next plot
 
         # Save data to Excel
         releases_df = releases_per_year.reset_index()
         releases_df.columns = ['Year', 'Count']
-        releases_df.to_excel("results/releases_by_year.xlsx", index=False)
+        releases_df.to_excel("results/s1/releases_by_year.xlsx", index=False)
 
         # -----------------------------
         # Plot 2: Movies per genre per year
@@ -104,11 +106,49 @@ class Analyzer:
         plt.ylabel("Count")
         plt.legend(title='Genre', bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.tight_layout()
-        plt.savefig("results/movies_per_genre_per_year.png")
+        plt.savefig("results/s1/movies_per_genre_per_year.png")
         plt.clf()
 
         # Save genre data to Excel
-        genre_counts.to_excel("results/movies_per_genre_per_year.xlsx")
+        genre_counts.to_excel("results/s1/movies_per_genre_per_year.xlsx")
+        
+        # -----------------------------
+        # Plot 2.1: TV Show subgenres per year
+        # -----------------------------
+        # Filter for TV Shows
+        df_tv_show = df[df['genre_group'] == 'TV Show'].copy()
+
+        # Ensure Genre is split correctly if it's a string with commas
+        if df_tv_show['Genre'].dtype == object:
+            df_tv_show['Genre'] = df_tv_show['Genre'].str.split(', ')
+
+        # Explode the Genre column to get one genre per row
+        df_tv_show_exploded = df_tv_show.explode('Genre')
+
+        # Group by year and subgenre
+        subgenre_counts = df_tv_show_exploded.groupby(['Year', 'Genre']).size().unstack(fill_value=0)
+
+        # Generate visually distinct colors
+        distinct_colors = distinctipy.get_colors(subgenre_counts.shape[1])
+
+        # Plot manually to control linestyle
+        plt.figure(figsize=(20, 10))
+        linestyles = ['-', ':']
+
+        for i, (genre, color) in enumerate(zip(subgenre_counts.columns, distinct_colors)):
+            linestyle = linestyles[i % len(linestyles)]
+            plt.plot(subgenre_counts.index, subgenre_counts[genre], label=genre, color=color, linestyle=linestyle)
+
+        plt.title("Number of TV Show Subgenres per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Count")
+        plt.legend(title='Subgenre', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/s1/subgenre_counts.png")
+        plt.clf()
+
+        # Save genre data to Excel
+        subgenre_counts.to_excel("results/s1/subgenre_counts.xlsx")
 
         # -----------------------------
         # Plot 3: Movies/Series per type per year
@@ -126,11 +166,11 @@ class Analyzer:
         plt.ylabel("Count")
         plt.legend(title='Type')
         plt.tight_layout()
-        plt.savefig("results/types_per_year.png")
+        plt.savefig("results/s1/types_per_year.png")
         plt.clf()
 
         # Save to Excel
-        type_counts.to_excel("results/types_per_year.xlsx")
+        type_counts.to_excel("results/s1/types_per_year.xlsx")
 
         # -----------------------------
         # Plot 4: Movies/Series per rating per year
@@ -156,19 +196,19 @@ class Analyzer:
         plt.ylabel("Count")
         plt.legend(title='Rating', bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.tight_layout()
-        plt.savefig("results/ratings_per_year.png")
+        plt.savefig("results/s1/ratings_per_year.png")
         plt.clf()
 
         # Save to Excel
-        rating_counts.to_excel("results/ratings_per_year.xlsx")
+        rating_counts.to_excel("results/s1/ratings_per_year.xlsx")
 
         # -----------------------------
         # Load Files
         # -----------------------------
-        releases_df = pd.read_excel("results/releases_by_year.xlsx")
-        genre_counts = pd.read_excel("results/movies_per_genre_per_year.xlsx", index_col=0)
-        type_counts = pd.read_excel("results/types_per_year.xlsx", index_col=0)
-        rating_counts = pd.read_excel("results/ratings_per_year.xlsx", index_col=0)
+        releases_df = pd.read_excel("results/s1/releases_by_year.xlsx")
+        genre_counts = pd.read_excel("results/s1/movies_per_genre_per_year.xlsx", index_col=0)
+        type_counts = pd.read_excel("results/s1/types_per_year.xlsx", index_col=0)
+        rating_counts = pd.read_excel("results/s1/ratings_per_year.xlsx", index_col=0)
 
         # -----------------------------
         # 1. YoY % Change – Total Releases
@@ -249,8 +289,6 @@ class Analyzer:
         })
 
         LABEL_FONT = 13
-
-        os.makedirs("results/s3", exist_ok=True)
         logger.info("Starting sub3 unsupervised analysis")
 
         # Replace historical country names
