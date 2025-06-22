@@ -47,6 +47,8 @@ class Analyzer:
         # Ensure results directory exists
         os.makedirs("results", exist_ok=True)
         os.makedirs("results/evaluation", exist_ok=True)
+        os.makedirs("results/s1", exist_ok=True)
+        os.makedirs("results/s3", exist_ok=True)
         
     def sub1(self, df):
         logger.info("****************************** S1: Temporal Trends in Global Content *******************************************")
@@ -68,26 +70,24 @@ class Analyzer:
         plt.xlabel("Year")
         plt.ylabel("Number of Shows")
         plt.tight_layout()
-        plt.savefig("results/releases_by_year.png")
+        plt.savefig("results/s1/releases_by_year.png")
         plt.clf()  # Clear figure for next plot
 
         # Save data to Excel
         releases_df = releases_per_year.reset_index()
         releases_df.columns = ['Year', 'Count']
-        releases_df.to_excel("results/releases_by_year.xlsx", index=False)
+        releases_df.to_excel("results/s1/releases_by_year.xlsx", index=False)
 
         # -----------------------------
-        # Plot 2: Movies per genre per year
+        # Plot 2: Movies/series per genre per year (stacked bar plot)
         # -----------------------------
         if 'genre_group' not in df.columns:
             print("genre_group column not found.")
             return
 
-        # Split the 'listed_in' column by comma and explode
-        # df['Genre'] = df['listed_in'].str.split(', ')
-        # df_exploded = df.explode('Genre')
-
         genre_counts = df.groupby(['Year', 'genre_group']).size().unstack(fill_value=0)
+        genre_counts_normalized = genre_counts.div(genre_counts.sum(axis=1), axis=0)
+
         # Generate visually distinct colors
         distinct_colors = distinctipy.get_colors(genre_counts.shape[1])
 
@@ -95,21 +95,93 @@ class Analyzer:
         plt.figure(figsize=(20, 10))
         linestyles = ['-', ':']  # Alternating solid and dotted lines
 
+        # Plot line graph for each genre
         for i, (genre, color) in enumerate(zip(genre_counts.columns, distinct_colors)):
             linestyle = linestyles[i % len(linestyles)]
             plt.plot(genre_counts.index, genre_counts[genre], label=genre, color=color, linestyle=linestyle)
-
+            
         plt.title("Number of Movies per Genre per Year")
         plt.xlabel("Year")
         plt.ylabel("Count")
         plt.legend(title='Genre', bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.tight_layout()
-        plt.savefig("results/movies_per_genre_per_year.png")
+        plt.savefig("results/s1/movies_per_genre_per_year.png")
+        plt.clf()
+        
+        genre_counts_normalized.plot(
+            kind='bar',
+            stacked=True,
+            figsize=(20, 10),
+            color=distinct_colors,
+            alpha=0.5
+        )
+        plt.title("Normalized Number of Movies/Series per Genre per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Proportion (0-1)")
+        plt.legend(title='Genre', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/s1/norm_movies_per_genre_per_year.png")
         plt.clf()
 
         # Save genre data to Excel
-        genre_counts.to_excel("results/movies_per_genre_per_year.xlsx")
+        genre_counts.to_excel("results/s1/movies_per_genre_per_year.xlsx")
+        genre_counts_normalized.to_excel("results/s1/norm_movies_per_genre_per_year.xlsx")
 
+        # -----------------------------
+        # Plot 2.1: TV Show subgenres per year (stacked bar plot)
+        # -----------------------------
+        df_tv_show = df[df['genre_group'] == 'TV Show'].copy()
+
+        # Ensure Genre is split correctly if it's a string with commas
+        if df_tv_show['Genre'].dtype == object:
+            df_tv_show['Genre'] = df_tv_show['Genre'].str.split(', ')
+
+        # Explode the Genre column to get one genre per row
+        df_tv_show_exploded = df_tv_show.explode('Genre')
+
+        # Group by year and subgenre
+        subgenre_counts = df_tv_show_exploded.groupby(['Year', 'Genre']).size().unstack(fill_value=0)
+        norm_subgenre_counts = subgenre_counts.div(subgenre_counts.sum(axis=1), axis=0) 
+
+        # Generate visually distinct colors
+        distinct_colors = distinctipy.get_colors(subgenre_counts.shape[1])
+
+        # Plot manually to control linestyle
+        plt.figure(figsize=(20, 10))
+        linestyles = ['-', ':']
+
+        # Plot line graph for each subgenre
+        for i, (genre, color) in enumerate(zip(subgenre_counts.columns, distinct_colors)):
+            linestyle = linestyles[i % len(linestyles)]
+            plt.plot(subgenre_counts.index, subgenre_counts[genre], label=genre, color=color, linestyle=linestyle)
+
+        plt.title("Number of TV Show Subgenres per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Count")
+        plt.legend(title='Subgenre', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/s1/subgenre_counts.png")
+        plt.clf()
+        
+        norm_subgenre_counts.plot(
+            kind='bar',
+            stacked=True,
+            figsize=(20, 10),
+            color=distinct_colors,
+            alpha=0.5
+        )
+        plt.title("Normalized Number of TV Show Subgenres per Year")
+        plt.xlabel("Year")  
+        plt.ylabel("Proportion (0-1)")
+        plt.legend(title='Subgenre', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/s1/norm_subgenre_counts.png")
+        plt.clf()
+
+        # Save genre data to Excel
+        subgenre_counts.to_excel("results/s1/subgenre_counts.xlsx")
+        norm_subgenre_counts.to_excel("results/s1/norm_subgenre_counts.xlsx")
+        
         # -----------------------------
         # Plot 3: Movies/Series per type per year
         # -----------------------------
@@ -118,6 +190,7 @@ class Analyzer:
             return
         # Group by Year and Type
         type_counts = df.groupby(['Year', 'type']).size().unstack(fill_value=0)
+        norm_type_counts = type_counts.div(type_counts.sum(axis=1), axis=0)
 
         # Plot as bar chart
         type_counts.plot(kind='bar', stacked=True, figsize=(12, 6))
@@ -126,11 +199,21 @@ class Analyzer:
         plt.ylabel("Count")
         plt.legend(title='Type')
         plt.tight_layout()
-        plt.savefig("results/types_per_year.png")
+        plt.savefig("results/s1/types_per_year.png")
+        plt.clf()
+        
+        norm_type_counts.plot(kind='bar', stacked=True, figsize=(12, 6))
+        plt.title("Normalized Number of Movies and TV Shows per Type per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Proportion (0-1)")
+        plt.legend(title='Type')
+        plt.tight_layout()
+        plt.savefig("results/s1/norm_types_per_year.png")
         plt.clf()
 
         # Save to Excel
-        type_counts.to_excel("results/types_per_year.xlsx")
+        type_counts.to_excel("results/s1/types_per_year.xlsx")
+        norm_type_counts.to_excel("results/s1/norm_types_per_year.xlsx")
 
         # -----------------------------
         # Plot 4: Movies/Series per rating per year
@@ -140,6 +223,7 @@ class Analyzer:
             return
         # Group by Year and Rating
         rating_counts = df.groupby(['Year', 'age_appropriateness']).size().unstack(fill_value=0)
+        norm_rating_counts = rating_counts.div(rating_counts.sum(axis=1), axis=0)
 
         # Generate visually distinct colors
         distinct_colors_type = distinctipy.get_colors(rating_counts.shape[1])
@@ -156,37 +240,38 @@ class Analyzer:
         plt.ylabel("Count")
         plt.legend(title='Rating', bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.tight_layout()
-        plt.savefig("results/ratings_per_year.png")
+        plt.savefig("results/s1/ratings_per_year.png")
         plt.clf()
 
+        norm_rating_counts.plot(
+            kind='bar',
+            stacked=True,
+            figsize=(20, 10),
+            color=distinct_colors_type,
+            alpha=0.5
+        )
+        plt.title("Normalized Number of Movies and TV Shows per Rating per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Proportion (0-1)")
+        plt.legend(title='Rating', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/s1/norm_ratings_per_year.png")
+        plt.clf()
+        
         # Save to Excel
-        rating_counts.to_excel("results/ratings_per_year.xlsx")
+        rating_counts.to_excel("results/s1/ratings_per_year.xlsx")
+        norm_rating_counts.to_excel("results/s1/norm_ratings_per_year.xlsx")
 
         # -----------------------------
         # Load Files
         # -----------------------------
-        releases_df = pd.read_excel("results/releases_by_year.xlsx")
-        genre_counts = pd.read_excel("results/movies_per_genre_per_year.xlsx", index_col=0)
-        type_counts = pd.read_excel("results/types_per_year.xlsx", index_col=0)
-        rating_counts = pd.read_excel("results/ratings_per_year.xlsx", index_col=0)
+        genres = pd.read_excel("results/s1/movies_per_genre_per_year.xlsx", index_col=0)
+        ratings = pd.read_excel("results/s1/ratings_per_year.xlsx", index_col=0)
 
         # -----------------------------
-        # 1. YoY % Change – Total Releases
+        # 5. Genre Share Evolution
         # -----------------------------
-        releases_df['YoY_%_Change'] = releases_df['Count'].pct_change() * 100
-        releases_df['Cumulative_Count'] = releases_df['Count'].cumsum()
-        releases_df.to_excel("results/evaluation/releases_yoy_evaluation.xlsx", index=False)
-
-        # -----------------------------
-        # 2. YoY % Change – Genre
-        # -----------------------------
-        genre_yoy = genre_counts.pct_change() * 100
-        genre_yoy.to_excel("results/evaluation/genre_yoy_pct_change.xlsx")
-
-        # -----------------------------
-        # 3. Genre Share Evolution
-        # -----------------------------
-        genre_share = genre_counts.div(genre_counts.sum(axis=1), axis=0) * 100
+        genre_share = genres.div(genres.sum(axis=1), axis=0) * 100
         genre_share.to_excel("results/evaluation/genre_share_percent_by_year.xlsx")
 
         # Plot
@@ -200,27 +285,15 @@ class Analyzer:
         plt.clf()
 
         # -----------------------------
-        # 4. Top Genre per Year
+        # 6. Top Genre per Year
         # -----------------------------
-        top_genre_per_year = genre_counts.idxmax(axis=1)
+        top_genre_per_year = genres.idxmax(axis=1)
         top_genre_per_year.to_frame(name='Top_Genre').to_excel("results/evaluation/top_genre_per_year.xlsx")
-
-        # -----------------------------
-        # 5. Type YoY % Change
-        # -----------------------------
-        type_yoy = type_counts.pct_change() * 100
-        type_yoy.to_excel("results/evaluation/types_yoy_pct_change.xlsx")
-
-        # -----------------------------
-        # 6. Rating YoY % Change
-        # -----------------------------
-        rating_yoy = rating_counts.pct_change() * 100
-        rating_yoy.to_excel("results/evaluation/ratings_yoy_pct_change.xlsx")
 
         # -----------------------------
         # 7. Top Rating per Year
         # -----------------------------
-        top_rating_per_year = rating_counts.idxmax(axis=1)
+        top_rating_per_year = ratings.idxmax(axis=1)
         top_rating_per_year.to_frame(name='Top_Rating').to_excel("results/evaluation/top_rating_per_year.xlsx")
 
     def genre(self, df):
@@ -249,8 +322,6 @@ class Analyzer:
         })
 
         LABEL_FONT = 13
-
-        os.makedirs("results/s3", exist_ok=True)
         logger.info("Starting sub3 unsupervised analysis")
 
         # Replace historical country names
@@ -630,6 +701,17 @@ class Analyzer:
         plt.savefig("results/s2_5_genres_by_country.png")
         plt.clf() # Clear figure for next plot
         
+        plt.figure(figsize=(20, 10))
+        sns.heatmap(genre_by_country, annot=True, fmt=".0f", cmap='viridis', cbar_kws={'pad': 0.01})
+        plt.title("Genres by Country")
+        plt.xlabel("Genre", fontsize=12)
+        plt.ylabel("Country", fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_5_aux.png")
+        plt.clf() # Clear figure for next plot
+
         # -----------------------------
         # Plot 6: Genre Groups by Country Heatmap
         # -----------------------------
@@ -653,6 +735,17 @@ class Analyzer:
         plt.savefig("results/s2_6_genre_groups_by_country.png")
         plt.clf() # Clear figure for next plot
 
+        plt.figure(figsize=(14, 8))
+        sns.heatmap(genre_group_by_country, annot=True, fmt=".2f", cmap='viridis', cbar_kws={'pad': 0.01})
+        plt.title("Genre Groups by Country")
+        plt.xlabel("Genre Group", fontsize=12)
+        plt.ylabel("Country", fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_6_aux.png")
+        plt.clf() # Clear figure for next plot
+
         # -----------------------------
         # Plot 7: TV Show Sub-Genre by Country Heatmap
         # -----------------------------
@@ -662,6 +755,9 @@ class Analyzer:
         # Count (Genre, Country) pairs
         tv_show_subgenre_by_country = pd.crosstab(df_tv_show['country'], df_tv_show['Genre'])
         
+        ordered_index = [country for country in ordered_index if country in tv_show_subgenre_by_country.index]
+        tv_show_subgenre_by_country = tv_show_subgenre_by_country.loc[ordered_index]
+
         plt.figure(figsize=(14, 8))
         sns.heatmap(tv_show_subgenre_by_country, annot=False, cmap='viridis', cbar_kws={'pad': 0.01})
         plt.title('TV Show Sub-genres by Country')
@@ -671,6 +767,17 @@ class Analyzer:
         plt.yticks(fontsize=12)
         plt.tight_layout()
         plt.savefig("results/s2_7_tv_show_subgenres_by_country.png")
+        plt.clf() # Clear figure for next plot
+
+        plt.figure(figsize=(14, 8))
+        sns.heatmap(tv_show_subgenre_by_country, annot=True, fmt=".2f", cmap='viridis', cbar_kws={'pad': 0.01})
+        plt.title('TV Show Sub-genres by Country')
+        plt.xlabel('TV Show Sub-Genre', fontsize=12)
+        plt.ylabel('Country', fontsize=12)
+        plt.xticks(rotation=45, ha='right', fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.savefig("results/s2_7_aux.png")
         plt.clf() # Clear figure for next plot
         
     def sub2(self, df):
