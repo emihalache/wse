@@ -1,5 +1,8 @@
-# wse
-Web Science and Engineering DSAIT4055
+# Web Science and Engineering
+Repository for the project of the course Web Science and Engineering DSAIT4055.
+You can read or download the full project report here:
+[https://emihalache.github.io/wse/](https://emihalache.github.io/wse/)  
+
 
 
 ## Set up the Project
