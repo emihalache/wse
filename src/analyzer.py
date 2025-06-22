@@ -79,29 +79,26 @@ class Analyzer:
         releases_df.to_excel("results/s1/releases_by_year.xlsx", index=False)
 
         # -----------------------------
-        # Plot 2: Movies per genre per year
+        # Plot 2: Movies/series per genre per year (stacked bar plot)
         # -----------------------------
         if 'genre_group' not in df.columns:
             print("genre_group column not found.")
             return
 
-        # Split the 'listed_in' column by comma and explode
-        # df['Genre'] = df['listed_in'].str.split(', ')
-        # df_exploded = df.explode('Genre')
-
         genre_counts = df.groupby(['Year', 'genre_group']).size().unstack(fill_value=0)
+
         # Generate visually distinct colors
         distinct_colors = distinctipy.get_colors(genre_counts.shape[1])
 
-        # Plot manually to control linestyle
-        plt.figure(figsize=(20, 10))
-        linestyles = ['-', ':']  # Alternating solid and dotted lines
+        # Plot as stacked bar plot
+        genre_counts.plot(
+            kind='bar',
+            stacked=True,
+            figsize=(20, 10),
+            color=distinct_colors
+        )
 
-        for i, (genre, color) in enumerate(zip(genre_counts.columns, distinct_colors)):
-            linestyle = linestyles[i % len(linestyles)]
-            plt.plot(genre_counts.index, genre_counts[genre], label=genre, color=color, linestyle=linestyle)
-
-        plt.title("Number of Movies per Genre per Year")
+        plt.title("Number of Movies/Series per Genre per Year")
         plt.xlabel("Year")
         plt.ylabel("Count")
         plt.legend(title='Genre', bbox_to_anchor=(1.05, 1), loc='upper left')
@@ -111,11 +108,10 @@ class Analyzer:
 
         # Save genre data to Excel
         genre_counts.to_excel("results/s1/movies_per_genre_per_year.xlsx")
-        
+
         # -----------------------------
-        # Plot 2.1: TV Show subgenres per year
+        # Plot 2.1: TV Show subgenres per year (stacked bar plot)
         # -----------------------------
-        # Filter for TV Shows
         df_tv_show = df[df['genre_group'] == 'TV Show'].copy()
 
         # Ensure Genre is split correctly if it's a string with commas
@@ -131,13 +127,13 @@ class Analyzer:
         # Generate visually distinct colors
         distinct_colors = distinctipy.get_colors(subgenre_counts.shape[1])
 
-        # Plot manually to control linestyle
-        plt.figure(figsize=(20, 10))
-        linestyles = ['-', ':']
-
-        for i, (genre, color) in enumerate(zip(subgenre_counts.columns, distinct_colors)):
-            linestyle = linestyles[i % len(linestyles)]
-            plt.plot(subgenre_counts.index, subgenre_counts[genre], label=genre, color=color, linestyle=linestyle)
+        # Plot as stacked bar plot
+        subgenre_counts.plot(
+            kind='bar',
+            stacked=True,
+            figsize=(20, 10),
+            color=distinct_colors
+        )
 
         plt.title("Number of TV Show Subgenres per Year")
         plt.xlabel("Year")
@@ -149,7 +145,7 @@ class Analyzer:
 
         # Save genre data to Excel
         subgenre_counts.to_excel("results/s1/subgenre_counts.xlsx")
-
+        
         # -----------------------------
         # Plot 3: Movies/Series per type per year
         # -----------------------------
@@ -205,28 +201,13 @@ class Analyzer:
         # -----------------------------
         # Load Files
         # -----------------------------
-        releases_df = pd.read_excel("results/s1/releases_by_year.xlsx")
-        genre_counts = pd.read_excel("results/s1/movies_per_genre_per_year.xlsx", index_col=0)
-        type_counts = pd.read_excel("results/s1/types_per_year.xlsx", index_col=0)
-        rating_counts = pd.read_excel("results/s1/ratings_per_year.xlsx", index_col=0)
+        genres = pd.read_excel("results/s1/movies_per_genre_per_year.xlsx", index_col=0)
+        ratings = pd.read_excel("results/s1/ratings_per_year.xlsx", index_col=0)
 
         # -----------------------------
-        # 1. YoY % Change – Total Releases
+        # 5. Genre Share Evolution
         # -----------------------------
-        releases_df['YoY_%_Change'] = releases_df['Count'].pct_change() * 100
-        releases_df['Cumulative_Count'] = releases_df['Count'].cumsum()
-        releases_df.to_excel("results/evaluation/releases_yoy_evaluation.xlsx", index=False)
-
-        # -----------------------------
-        # 2. YoY % Change – Genre
-        # -----------------------------
-        genre_yoy = genre_counts.pct_change() * 100
-        genre_yoy.to_excel("results/evaluation/genre_yoy_pct_change.xlsx")
-
-        # -----------------------------
-        # 3. Genre Share Evolution
-        # -----------------------------
-        genre_share = genre_counts.div(genre_counts.sum(axis=1), axis=0) * 100
+        genre_share = genres.div(genres.sum(axis=1), axis=0) * 100
         genre_share.to_excel("results/evaluation/genre_share_percent_by_year.xlsx")
 
         # Plot
@@ -240,27 +221,15 @@ class Analyzer:
         plt.clf()
 
         # -----------------------------
-        # 4. Top Genre per Year
+        # 6. Top Genre per Year
         # -----------------------------
-        top_genre_per_year = genre_counts.idxmax(axis=1)
+        top_genre_per_year = genres.idxmax(axis=1)
         top_genre_per_year.to_frame(name='Top_Genre').to_excel("results/evaluation/top_genre_per_year.xlsx")
-
-        # -----------------------------
-        # 5. Type YoY % Change
-        # -----------------------------
-        type_yoy = type_counts.pct_change() * 100
-        type_yoy.to_excel("results/evaluation/types_yoy_pct_change.xlsx")
-
-        # -----------------------------
-        # 6. Rating YoY % Change
-        # -----------------------------
-        rating_yoy = rating_counts.pct_change() * 100
-        rating_yoy.to_excel("results/evaluation/ratings_yoy_pct_change.xlsx")
 
         # -----------------------------
         # 7. Top Rating per Year
         # -----------------------------
-        top_rating_per_year = rating_counts.idxmax(axis=1)
+        top_rating_per_year = ratings.idxmax(axis=1)
         top_rating_per_year.to_frame(name='Top_Rating').to_excel("results/evaluation/top_rating_per_year.xlsx")
 
     def genre(self, df):
