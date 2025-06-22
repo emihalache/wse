@@ -86,28 +86,46 @@ class Analyzer:
             return
 
         genre_counts = df.groupby(['Year', 'genre_group']).size().unstack(fill_value=0)
+        genre_counts_normalized = genre_counts.div(genre_counts.sum(axis=1), axis=0)
 
         # Generate visually distinct colors
         distinct_colors = distinctipy.get_colors(genre_counts.shape[1])
 
-        # Plot as stacked bar plot
-        genre_counts.plot(
-            kind='bar',
-            stacked=True,
-            figsize=(20, 10),
-            color=distinct_colors
-        )
+        # Plot manually to control linestyle
+        plt.figure(figsize=(20, 10))
+        linestyles = ['-', ':']  # Alternating solid and dotted lines
 
-        plt.title("Number of Movies/Series per Genre per Year")
+        # Plot line graph for each genre
+        for i, (genre, color) in enumerate(zip(genre_counts.columns, distinct_colors)):
+            linestyle = linestyles[i % len(linestyles)]
+            plt.plot(genre_counts.index, genre_counts[genre], label=genre, color=color, linestyle=linestyle)
+            
+        plt.title("Number of Movies per Genre per Year")
         plt.xlabel("Year")
         plt.ylabel("Count")
         plt.legend(title='Genre', bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.tight_layout()
         plt.savefig("results/s1/movies_per_genre_per_year.png")
         plt.clf()
+        
+        genre_counts_normalized.plot(
+            kind='bar',
+            stacked=True,
+            figsize=(20, 10),
+            color=distinct_colors,
+            alpha=0.5
+        )
+        plt.title("Normalized Number of Movies/Series per Genre per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Proportion (0-1)")
+        plt.legend(title='Genre', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/s1/norm_movies_per_genre_per_year.png")
+        plt.clf()
 
         # Save genre data to Excel
         genre_counts.to_excel("results/s1/movies_per_genre_per_year.xlsx")
+        genre_counts_normalized.to_excel("results/s1/norm_movies_per_genre_per_year.xlsx")
 
         # -----------------------------
         # Plot 2.1: TV Show subgenres per year (stacked bar plot)
@@ -123,17 +141,19 @@ class Analyzer:
 
         # Group by year and subgenre
         subgenre_counts = df_tv_show_exploded.groupby(['Year', 'Genre']).size().unstack(fill_value=0)
+        norm_subgenre_counts = subgenre_counts.div(subgenre_counts.sum(axis=1), axis=0) 
 
         # Generate visually distinct colors
         distinct_colors = distinctipy.get_colors(subgenre_counts.shape[1])
 
-        # Plot as stacked bar plot
-        subgenre_counts.plot(
-            kind='bar',
-            stacked=True,
-            figsize=(20, 10),
-            color=distinct_colors
-        )
+        # Plot manually to control linestyle
+        plt.figure(figsize=(20, 10))
+        linestyles = ['-', ':']
+
+        # Plot line graph for each subgenre
+        for i, (genre, color) in enumerate(zip(subgenre_counts.columns, distinct_colors)):
+            linestyle = linestyles[i % len(linestyles)]
+            plt.plot(subgenre_counts.index, subgenre_counts[genre], label=genre, color=color, linestyle=linestyle)
 
         plt.title("Number of TV Show Subgenres per Year")
         plt.xlabel("Year")
@@ -142,9 +162,25 @@ class Analyzer:
         plt.tight_layout()
         plt.savefig("results/s1/subgenre_counts.png")
         plt.clf()
+        
+        norm_subgenre_counts.plot(
+            kind='bar',
+            stacked=True,
+            figsize=(20, 10),
+            color=distinct_colors,
+            alpha=0.5
+        )
+        plt.title("Normalized Number of TV Show Subgenres per Year")
+        plt.xlabel("Year")  
+        plt.ylabel("Proportion (0-1)")
+        plt.legend(title='Subgenre', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/s1/norm_subgenre_counts.png")
+        plt.clf()
 
         # Save genre data to Excel
         subgenre_counts.to_excel("results/s1/subgenre_counts.xlsx")
+        norm_subgenre_counts.to_excel("results/s1/norm_subgenre_counts.xlsx")
         
         # -----------------------------
         # Plot 3: Movies/Series per type per year
@@ -154,6 +190,7 @@ class Analyzer:
             return
         # Group by Year and Type
         type_counts = df.groupby(['Year', 'type']).size().unstack(fill_value=0)
+        norm_type_counts = type_counts.div(type_counts.sum(axis=1), axis=0)
 
         # Plot as bar chart
         type_counts.plot(kind='bar', stacked=True, figsize=(12, 6))
@@ -164,9 +201,19 @@ class Analyzer:
         plt.tight_layout()
         plt.savefig("results/s1/types_per_year.png")
         plt.clf()
+        
+        norm_type_counts.plot(kind='bar', stacked=True, figsize=(12, 6))
+        plt.title("Normalized Number of Movies and TV Shows per Type per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Proportion (0-1)")
+        plt.legend(title='Type')
+        plt.tight_layout()
+        plt.savefig("results/s1/norm_types_per_year.png")
+        plt.clf()
 
         # Save to Excel
         type_counts.to_excel("results/s1/types_per_year.xlsx")
+        norm_type_counts.to_excel("results/s1/norm_types_per_year.xlsx")
 
         # -----------------------------
         # Plot 4: Movies/Series per rating per year
@@ -176,6 +223,7 @@ class Analyzer:
             return
         # Group by Year and Rating
         rating_counts = df.groupby(['Year', 'age_appropriateness']).size().unstack(fill_value=0)
+        norm_rating_counts = rating_counts.div(rating_counts.sum(axis=1), axis=0)
 
         # Generate visually distinct colors
         distinct_colors_type = distinctipy.get_colors(rating_counts.shape[1])
@@ -195,8 +243,24 @@ class Analyzer:
         plt.savefig("results/s1/ratings_per_year.png")
         plt.clf()
 
+        norm_rating_counts.plot(
+            kind='bar',
+            stacked=True,
+            figsize=(20, 10),
+            color=distinct_colors_type,
+            alpha=0.5
+        )
+        plt.title("Normalized Number of Movies and TV Shows per Rating per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Proportion (0-1)")
+        plt.legend(title='Rating', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig("results/s1/norm_ratings_per_year.png")
+        plt.clf()
+        
         # Save to Excel
         rating_counts.to_excel("results/s1/ratings_per_year.xlsx")
+        norm_rating_counts.to_excel("results/s1/norm_ratings_per_year.xlsx")
 
         # -----------------------------
         # Load Files
